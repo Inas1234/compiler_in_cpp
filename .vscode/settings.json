@@ -1,3 +1,7 @@
 {
-    "C_Cpp.default.compilerPath": "/home/katreon/C++/Compiler/src/main.cpp"
+    "C_Cpp.default.compilerPath": "/home/katreon/C++/Compiler/src/main.cpp",
+    "files.associations": {
+        "*.ejs": "html",
+        "iosfwd": "cpp"
+    }
 }

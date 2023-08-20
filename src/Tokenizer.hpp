@@ -4,10 +4,15 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <iostream>
 
 enum class TokenType {
     _return,
-    int_lit
+    int_lit,
+    add,
+    sub,
+    mul
+
 };
 
 struct Token {
@@ -41,6 +46,15 @@ public:
                 i--;
                 tokens.push_back(Token{TokenType::int_lit, buff});
                 buff.clear();
+            }
+            else if (c == '+') {
+                tokens.push_back(Token{TokenType::add});
+            }
+            else if (c == '-') {
+                tokens.push_back(Token{TokenType::sub});
+            }
+            else if (c == '*') {
+                tokens.push_back(Token{TokenType::mul});
             }
             else if (isspace(c)) {
                 continue;
