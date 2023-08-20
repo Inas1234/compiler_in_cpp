@@ -11,13 +11,16 @@ enum class TokenType {
     int_lit,
     add,
     sub,
-    mul
-
+    mul,
+    var_decl,
+    var_ref,
+    var_assign,
 };
 
 struct Token {
     TokenType type;
     std::optional<std::string> value {};
+    std::optional<std::string> var_name {};
 };
 
 class Tokenizer {
@@ -30,13 +33,27 @@ public:
             char c = str.at(i);
             if (isalpha(c)) {
                 buff.push_back(c);
-
+                while (i + 1 < str.length() && isalpha(str.at(i + 1))) {
+                    i++;
+                    buff.push_back(str.at(i));
+                }
+                
                 if (buff == "exit") {
                     tokens.push_back(Token{TokenType::_return});
+                } else if (buff == "int") {
+                    i++; // Skip space after "int"
                     buff.clear();
+                    while (i < str.length() && isalpha(str.at(i))) {
+                        buff.push_back(str.at(i));
+                        i++;
+                    }
+                    tokens.push_back(Token{TokenType::var_decl, {}, buff});
+                } else {
+                    tokens.push_back(Token{TokenType::var_ref, {}, buff});
                 }
-            }
-            else if (isdigit(c)) {
+
+                buff.clear();
+            } else if (isdigit(c)) {
                 buff.push_back(c);
                 i++;
                 while (i < str.length() && isdigit(str.at(i))) {
@@ -46,18 +63,16 @@ public:
                 i--;
                 tokens.push_back(Token{TokenType::int_lit, buff});
                 buff.clear();
-            }
-            else if (c == '+') {
+            } else if (c == '+') {
                 tokens.push_back(Token{TokenType::add});
-            }
-            else if (c == '-') {
+            } else if (c == '-') {
                 tokens.push_back(Token{TokenType::sub});
-            }
-            else if (c == '*') {
+            } else if (c == '*') {
                 tokens.push_back(Token{TokenType::mul});
-            }
-            else if (isspace(c)) {
+            } else if (isspace(c)) {
                 continue;
+            } else if (c == '=') {
+                tokens.push_back(Token{TokenType::var_assign});
             }
         }
 

@@ -8,7 +8,7 @@
 #include <stack>
 #include <random>
 #include <algorithm>
-
+#include <map>
 using namespace std;
 
 int precedence(TokenType op) {
@@ -27,37 +27,63 @@ int precedence(TokenType op) {
 string tokens_to_asm(vector<Token>& tokens) {
     stringstream output;
 
-    output << "global _start\n_start:\n";
+    map<string, string> variables;  // Map variable names to their corresponding memory locations
+
+    output << "section .data\n";  // Section for data (variables)
 
     vector<Token> postfix;
     stack<Token> op_stack;
+    stack<string> operands;
 
     for (int i = 0; i < tokens.size(); i++) {
         if (tokens[i].type == TokenType::int_lit) {
-            postfix.push_back(tokens[i]);
+            if (tokens[i].value) {
+                postfix.push_back(tokens[i]);
+            }
         } else if (tokens[i].type == TokenType::add || tokens[i].type == TokenType::sub || tokens[i].type == TokenType::mul) {
             while (!op_stack.empty() && precedence(op_stack.top().type) >= precedence(tokens[i].type)) {
                 postfix.push_back(op_stack.top());
                 op_stack.pop();
             }
             op_stack.push(tokens[i]);
+        } else if (tokens[i].type == TokenType::var_decl) {
+            i++;
+            if (i < tokens.size() && tokens[i].value) {
+                string var_name = tokens[i].value.value();
+                variables[var_name] = var_name;
+                output << var_name << " dq 0\n";  // Declare variable in data section
+            }
+        } else if (tokens[i].type == TokenType::var_assign) {
+            if (i > 0 && tokens[i-1].value && i+1 < tokens.size() && tokens[i+1].value) {
+                string var_name = tokens[i-1].value.value();
+                string value = tokens[i+1].value.value();
+                output << "    mov qword [" << variables[var_name] << "], " << value << "\n";
+                i++;  // Skip the value token
+            }
+        } else if (tokens[i].type == TokenType::var_ref) {
+            if (tokens[i].value) {
+                operands.push(variables[tokens[i].value.value()]);
+            }
         }
     }
+
+    output << "section .text\n";  // Section for code
+    output << "global _start\n_start:\n";
 
     while (!op_stack.empty()) {
         postfix.push_back(op_stack.top());
         op_stack.pop();
     }
 
-    stack<string> operands;
-
     for (int i = 0; i < postfix.size(); i++) {
         if (postfix[i].type == TokenType::int_lit) {
-            operands.push(postfix[i].value.value());
+            if (postfix[i].value) {
+                operands.push(postfix[i].value.value());
+            }
         } else if (postfix[i].type == TokenType::add || postfix[i].type == TokenType::sub || postfix[i].type == TokenType::mul) {
             string b = operands.top(); operands.pop();
             string a = operands.top(); operands.pop();
-            string result_reg = "r" + to_string(i + 8);  
+            string result_reg = "r" + to_string(i + 8);
 
             output << "    mov " << result_reg << ", " << a << "\n";
             if (postfix[i].type == TokenType::add) {
