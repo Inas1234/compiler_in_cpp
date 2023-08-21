@@ -9,6 +9,9 @@
 #include <random>
 #include <algorithm>
 #include <map>
+#include <set>
+#include <iterator> // Required for std::prev
+
 using namespace std;
 
 int precedence(TokenType op) {
@@ -27,13 +30,14 @@ int precedence(TokenType op) {
 string tokens_to_asm(vector<Token>& tokens) {
     stringstream output;
 
-    map<string, string> variables;  // Map variable names to their corresponding memory locations
+    map<string, string> variables;  
 
-    output << "section .data\n";  // Section for data (variables)
+    output << "section .data\n";  
 
     vector<Token> postfix;
     stack<Token> op_stack;
     stack<string> operands;
+    set<string> available_registers = {"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"};
 
     for (int i = 0; i < tokens.size(); i++) {
         if (tokens[i].type == TokenType::int_lit) {
@@ -51,14 +55,14 @@ string tokens_to_asm(vector<Token>& tokens) {
             if (i < tokens.size() && tokens[i].value) {
                 string var_name = tokens[i].value.value();
                 variables[var_name] = var_name;
-                output << var_name << " dq 0\n";  // Declare variable in data section
+                output << var_name << " dq 0\n";  
             }
         } else if (tokens[i].type == TokenType::var_assign) {
             if (i > 0 && tokens[i-1].value && i+1 < tokens.size() && tokens[i+1].value) {
                 string var_name = tokens[i-1].value.value();
                 string value = tokens[i+1].value.value();
                 output << "    mov qword [" << variables[var_name] << "], " << value << "\n";
-                i++;  // Skip the value token
+                i++; 
             }
         } else if (tokens[i].type == TokenType::var_ref) {
             if (tokens[i].value) {
@@ -67,7 +71,7 @@ string tokens_to_asm(vector<Token>& tokens) {
         }
     }
 
-    output << "section .text\n";  // Section for code
+    output << "section .text\n"; 
     output << "global _start\n_start:\n";
 
     while (!op_stack.empty()) {
@@ -80,11 +84,12 @@ string tokens_to_asm(vector<Token>& tokens) {
             if (postfix[i].value) {
                 operands.push(postfix[i].value.value());
             }
-        } else if (postfix[i].type == TokenType::add || postfix[i].type == TokenType::sub || postfix[i].type == TokenType::mul) {
+        } 
+        else if (postfix[i].type == TokenType::add || postfix[i].type == TokenType::sub || postfix[i].type == TokenType::mul) {
             string b = operands.top(); operands.pop();
             string a = operands.top(); operands.pop();
-            string result_reg = "r" + to_string(i + 8);
-
+            string result_reg = *available_registers.begin();
+            available_registers.erase(available_registers.begin());
             output << "    mov " << result_reg << ", " << a << "\n";
             if (postfix[i].type == TokenType::add) {
                 output << "    add " << result_reg << ", " << b << "\n";

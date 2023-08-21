@@ -38,18 +38,15 @@ public:
                     buff.push_back(str.at(i));
                 }
                 
+                if (i + 1 == str.length() || !isalpha(str.at(i + 1))) {
                 if (buff == "exit") {
                     tokens.push_back(Token{TokenType::_return});
-                } else if (buff == "int") {
-                    i++; // Skip space after "int"
-                    buff.clear();
-                    while (i < str.length() && isalpha(str.at(i))) {
-                        buff.push_back(str.at(i));
-                        i++;
-                    }
-                    tokens.push_back(Token{TokenType::var_decl, {}, buff});
+                } else if (buff == "var") {
+                    tokens.push_back(Token{TokenType::var_decl});
                 } else {
                     tokens.push_back(Token{TokenType::var_ref, {}, buff});
+                }
+                buff.clear();
                 }
 
                 buff.clear();
