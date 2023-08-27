@@ -1,80 +1,87 @@
-#ifndef TOKENIZER_H
-#define TOKENIZER_H
-
-#include <string>
 #include <vector>
-#include <optional>
+#include <string>
 #include <iostream>
+#include <optional>
 
-enum class TokenType {
-    _return,
-    int_lit,
-    add,
-    sub,
-    mul,
-    var_decl,
-    var_ref,
-    var_assign,
+enum class Tokentype{
+    EXIT,
+    INTLIT,
+    OPENPAREN,
+    CLOSEPAREN,
 };
 
-struct Token {
-    TokenType type;
-    std::optional<std::string> value {};
-    std::optional<std::string> var_name {};
+struct Token{
+    Tokentype type;
+    std::string value;
 };
 
-class Tokenizer {
-public:
-    static std::vector<Token> tokenize(const std::string& str) {
-        std::string buff;
-        std::vector<Token> tokens;
 
-        for (size_t i = 0; i < str.length(); ++i) {
-            char c = str.at(i);
-            if (isalpha(c)) {
-                buff.push_back(c);
-                while (i + 1 < str.length() && isalpha(str.at(i + 1))) {
-                    i++;
-                    buff.push_back(str.at(i));
-                }
-                
-                if (i + 1 == str.length() || !isalpha(str.at(i + 1))) {
-                if (buff == "exit") {
-                    tokens.push_back(Token{TokenType::_return});
-                } else if (buff == "var") {
-                    tokens.push_back(Token{TokenType::var_decl});
-                } else {
-                    tokens.push_back(Token{TokenType::var_ref, {}, buff});
-                }
-                buff.clear();
-                }
+class Tokenize{
+    public:
+        Tokenize(std::string str){
+            m_string = str;
+        }
 
-                buff.clear();
-            } else if (isdigit(c)) {
-                buff.push_back(c);
-                i++;
-                while (i < str.length() && isdigit(str.at(i))) {
-                    buff.push_back(str.at(i));
-                    i++;
+
+        std::vector<Token> tokenize(){
+            std::vector<Token> tokens;
+            std::string buffer = "";
+            while (peak().has_value())
+            {
+                if (isalpha(peak().value())){
+                    buffer.push_back(consume());
+                    while (isalpha(peak().value())){
+                        buffer.push_back(consume());
+                    }
+                    if (buffer == "exit"){
+                        tokens.push_back({Tokentype::EXIT});
+                    }
+                    buffer.clear();
                 }
-                i--;
-                tokens.push_back(Token{TokenType::int_lit, buff});
-                buff.clear();
-            } else if (c == '+') {
-                tokens.push_back(Token{TokenType::add});
-            } else if (c == '-') {
-                tokens.push_back(Token{TokenType::sub});
-            } else if (c == '*') {
-                tokens.push_back(Token{TokenType::mul});
-            } else if (isspace(c)) {
-                continue;
-            } else if (c == '=') {
-                tokens.push_back(Token{TokenType::var_assign});
+                else if (isdigit(peak().value())){
+                    buffer.push_back(consume());
+                    while (isdigit(peak().value())){
+                        buffer.push_back(consume());
+                    }
+                    tokens.push_back({Tokentype::INTLIT, buffer});
+                    buffer.clear();
+                }
+                else if (peak().value() == '('){
+                    tokens.push_back({Tokentype::OPENPAREN});
+                    consume();
+                }
+                else if (peak().value() == ')'){
+                    tokens.push_back({Tokentype::CLOSEPAREN});
+                    consume();
+                }
+                else if (isspace(peak().value())){
+                    consume();
+                }
+                else{
+                    std::cout << "Error: Invalid character" << std::endl;
+                    exit(1);
+                }
+            }
+
+            m_index = 0;
+
+            return tokens;
+        }
+    private:
+        std::string m_string;
+        int m_index = 0;
+
+        std::optional<char> peak(int ahead = 0){
+            if (m_index + ahead >= m_string.length()) {
+                return {};
+            }
+            else {
+                return m_string.at(m_index + ahead);
             }
         }
 
-        return tokens;
-    }
-};
+        char consume(){
+            return m_string.at(m_index++);
+        }
 
-#endif // TOKENIZER_H
+};
