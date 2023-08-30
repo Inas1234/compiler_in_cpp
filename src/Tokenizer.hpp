@@ -9,11 +9,15 @@ enum class Tokentype{
     INTLIT,
     OPENPAREN,
     CLOSEPAREN,
+    LET,
+    IDENTIFIER,
+    EQUALS,
+    SEMI
 };
 
 struct Token{
     Tokentype type;
-    std::string value;
+    std::optional<std::string> value;
 };
 
 
@@ -31,13 +35,25 @@ class Tokenize{
             {
                 if (isalpha(peak().value())){
                     buffer.push_back(consume());
-                    while (isalpha(peak().value())){
+                    while (isalnum(peak().value())){
                         buffer.push_back(consume());
                     }
                     if (buffer == "exit"){
                         tokens.push_back({Tokentype::EXIT});
+                        buffer.clear();
+                        continue;
                     }
-                    buffer.clear();
+                    else if (buffer == "let"){
+                        tokens.push_back({Tokentype::LET});
+                        buffer.clear();
+                        continue;
+                    }
+                    else{
+                        tokens.push_back({Tokentype::IDENTIFIER, buffer});
+                        buffer.clear();
+                        continue;
+                    }
+
                 }
                 else if (isdigit(peak().value())){
                     buffer.push_back(consume());
@@ -46,17 +62,31 @@ class Tokenize{
                     }
                     tokens.push_back({Tokentype::INTLIT, buffer});
                     buffer.clear();
+                    continue;
                 }
                 else if (peak().value() == '('){
-                    tokens.push_back({Tokentype::OPENPAREN});
                     consume();
+                    tokens.push_back({Tokentype::OPENPAREN});
+                    continue;
                 }
                 else if (peak().value() == ')'){
-                    tokens.push_back({Tokentype::CLOSEPAREN});
                     consume();
+                    tokens.push_back({Tokentype::CLOSEPAREN});
+                    continue;
+                }
+                else if (peak().value() == '='){
+                    consume();
+                    tokens.push_back({Tokentype::EQUALS});
+                    continue;
+                }
+                else if (peak().value() == ';'){
+                    consume();
+                    tokens.push_back({Tokentype::SEMI});
+                    continue;   
                 }
                 else if (isspace(peak().value())){
                     consume();
+                    continue;
                 }
                 else{
                     std::cout << "Error: Invalid character" << std::endl;

@@ -17,8 +17,16 @@ class Generator{
             struct ExprVisitor {
                 Generator *gen;
                 void operator()(const NodeExprIntLit& node) {
-                    gen->m_output << "    mov rax, " << node.token.value << std::endl;
+                    std::cout << "IntLit: " << node.token.value.value() << std::endl;
+                    gen->m_output << "    mov rax, " << node.token.value.value() << std::endl;
                     gen->push("rax");
+                }
+                void operator()(const NodeExprIdentifier& node) {
+                    std::cout << "Identifier: " << node.token.value.value() << std::endl;
+                    auto& var = gen->m_vars.at(node.token.value.value());
+                    std::stringstream offset;
+                    offset << "QWORD [rsp + " << (gen->stack_size - var.stack_loc - 1) * 8 << "]";
+                    gen->push(offset.str());
                 }
             };
             std::visit(ExprVisitor{this}, expr.node);
@@ -34,12 +42,17 @@ class Generator{
                     gen->pop("rdi");
                     gen->m_output << "    syscall" << std::endl;
                 }
+
+                void operator() (const NodeStmtLet& node){
+                    gen->m_vars.insert({node.identifier.value.value(), Var{gen->stack_size}});
+                    gen->gen_expr(node.expr);
+                }
             };
             StmtVisitor visitor {.gen = this};
             std::visit(visitor, stmt.node);
         }
 
-        std::string gen_prog(){
+        [[nodiscard]] std::string gen_prog(){
             m_output << "global _start\n_start:\n";
             for (auto stmt : m_node.nodes){
                 gen_stmt(stmt);
@@ -64,7 +77,13 @@ class Generator{
             stack_size--;
         }
 
+        struct Var {
+            size_t stack_loc;
+        };
+
         size_t stack_size = 0;
         NodeProg m_node;
         std::stringstream m_output;
+
+        std::unordered_map<std::string, Var> m_vars {};
 };
