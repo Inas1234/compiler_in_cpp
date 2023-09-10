@@ -21,7 +21,12 @@ enum class Tokentype{
     IFEQUAL,
     IFNOTEQUAL,
     IFGREATER,
-    IFLESSER
+    IFLESSER,
+    IF,
+    THEN,
+    ELSE,
+    BRACKET_OPEN,
+    BRACKET_CLOSE,
 };
 
 struct Token{
@@ -73,6 +78,21 @@ class Tokenize{
                     }
                     else if (buffer == "let"){
                         tokens.push_back({Tokentype::LET});
+                        buffer.clear();
+                        continue;
+                    }
+                    else if (buffer == "if"){
+                        tokens.push_back({Tokentype::IF});
+                        buffer.clear();
+                        continue;
+                    }
+                    else if (buffer == "then"){
+                        tokens.push_back({Tokentype::THEN});
+                        buffer.clear();
+                        continue;
+                    }
+                    else if (buffer == "else"){
+                        tokens.push_back({Tokentype::ELSE});
                         buffer.clear();
                         continue;
                     }
@@ -157,6 +177,16 @@ class Tokenize{
                 else if (peak().value() == '/'){
                     consume();
                     tokens.push_back({Tokentype::DIVIDE});
+                    continue;
+                }
+                else if (peak().value() == '{'){
+                    consume();
+                    tokens.push_back({Tokentype::BRACKET_OPEN});
+                    continue;
+                }
+                else if (peak().value() == '}'){
+                    consume();
+                    tokens.push_back({Tokentype::BRACKET_CLOSE});
                     continue;
                 }
                 else if (isspace(peak().value())){

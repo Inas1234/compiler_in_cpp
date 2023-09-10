@@ -120,6 +120,63 @@ class Generator{
                     gen->pop("rdi");
                     gen->m_output << "    call dump" << std::endl;
                 }
+                void operator()(const NodeStmtIf& node) {
+                    // Label creation for condition handling
+                    static int labelCounter = 0;
+                    int currentLabel = labelCounter++;
+
+                    std::string trueLabel = "IF_TRUE_" + std::to_string(currentLabel);
+                    std::string endLabel = "IF_END_" + std::to_string(currentLabel);
+
+                    gen->gen_expr(node.condition);
+                    gen->pop("rax");
+                    gen->m_output << "    cmp rax, 1" << std::endl;
+                    struct JumpVisitor {
+                        Generator *gen;
+                        std::string trueLabel;
+                        void operator()(const NodeExprIntLit&) {
+                            gen->m_output << "    jne " << trueLabel << std::endl;
+                        }
+                        void operator()(const NodeExprIdentifier&) {
+                            gen->m_output << "    jne " << trueLabel << std::endl;
+                        }
+                        void operator()(const BinaryExprPlus&) {
+                            gen->m_output << "    jne " << trueLabel << std::endl;
+                        }
+                        void operator()(const BinaryExprMinus&) {
+                            gen->m_output << "    jne " << trueLabel << std::endl;
+                        }
+                        void operator()(const BinaryExprMultiply&) {
+                            gen->m_output << "    jne " << trueLabel << std::endl;
+                        }
+                        void operator()(const BinaryExprDivide&) {
+                            gen->m_output << "    jne " << trueLabel << std::endl;
+                        }
+                        void operator()(const NodeExprIfEqual&) {
+                            gen->m_output << "    je " << trueLabel << std::endl;
+                        }
+                        void operator()(const NodeExprIfGreater&) {
+                            gen->m_output << "    je " << trueLabel << std::endl;
+                        }
+                        void operator()(const NodeExprIfNotEqual&) {
+                            gen->m_output << "    je " << trueLabel << std::endl;
+                        }
+                        void operator()(const NodeExprIfLesser&) {
+                            gen->m_output << "    je " << trueLabel << std::endl;
+                        }
+                    };
+
+                    std::visit(JumpVisitor{gen, trueLabel}, node.condition.node);
+
+                    gen->m_output << "    jmp " << endLabel << std::endl;
+
+                    gen->m_output << trueLabel << ":\n";
+                    for (const auto& stmt : node.nodes) {
+                        gen->gen_stmt(*stmt);
+                    }
+
+                    gen->m_output << endLabel << ":\n";
+                }
             };
             StmtVisitor visitor {.gen = this};
             std::visit(visitor, stmt.node);

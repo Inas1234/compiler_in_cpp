@@ -58,16 +58,37 @@ _start:
     add rax, rdi
     push rax
     push QWORD [rsp + 0]
-    push QWORD [rsp + 0]
+    push QWORD [rsp + 8]
+    push QWORD [rsp + 8]
+    pop rdi
+    pop rax
+    cmp rax, rdi
+    sete al
+    push rax
+    pop rax
+    cmp rax, 1
+    je IF_TRUE_0
+    jmp IF_END_0
+IF_TRUE_0:
+    mov rax, 1
+    push rax
     mov rax, 1
     push rax
     pop rdi
     pop rax
     cmp rax, rdi
-    setl al
+    sete al
     push rax
+    pop rax
+    cmp rax, 1
+    je IF_TRUE_1
+    jmp IF_END_1
+IF_TRUE_1:
+    push QWORD [rsp + 8]
     pop rdi
     call dump
+IF_END_1:
+IF_END_0:
     mov rax, 0
     push rax
     mov rax, 60

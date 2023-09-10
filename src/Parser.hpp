@@ -91,8 +91,15 @@ struct NodeStmtLet {
     NodeExpr expr;
 };
 
+struct NodeStmt;
+
+struct NodeStmtIf {
+    NodeExpr condition;
+    std::vector<std::shared_ptr<NodeStmt>> nodes;
+};
+
 struct NodeStmt {
-    std::variant<NodeStmtExit, NodeStmtLet, NodeStmtPrint> node;
+    std::variant<NodeStmtExit, NodeStmtLet, NodeStmtPrint, NodeStmtIf> node;
 };
 
 struct NodeProg {
@@ -242,6 +249,55 @@ class Parser {
                 }
                 else {
                     std::cout << "Error: Invalid syntax print()" << std::endl;
+                    exit(1);
+                }
+
+                return NodeStmt{.node = node_stmt};
+            }
+            else if (peak().value().type == Tokentype::IF && peak(1).value().type == Tokentype::OPENPAREN) {
+                consume();
+                consume();
+
+                NodeStmtIf node_stmt;
+                if (auto node = parse_expr()) {
+                    node_stmt = NodeStmtIf({node.value()});
+                }
+                else {
+                    std::cout << "Error: Invalid syntax if()" << std::endl;
+                    exit(1);
+                }
+
+                if (peak().value().type == Tokentype::CLOSEPAREN) {
+                    consume();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax if()" << std::endl;
+                    exit(1);
+                }
+
+                if (peak().value().type == Tokentype::BRACKET_OPEN) {
+                    consume();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax if()" << std::endl;
+                    exit(1);
+                }
+
+                while (peak().has_value() && peak().value().type != Tokentype::BRACKET_CLOSE) {
+                    if (auto node = parse_stmt()) {
+                        node_stmt.nodes.push_back(std::make_shared<NodeStmt>(node.value()));
+                    }
+                    else {
+                        std::cout << "Error: Invalid syntax if()" << std::endl;
+                        exit(1);
+                    }
+                }
+
+                if (peak().value().type == Tokentype::BRACKET_CLOSE) {
+                    consume();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax if()" << std::endl;
                     exit(1);
                 }
 
