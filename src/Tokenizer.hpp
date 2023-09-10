@@ -14,12 +14,31 @@ enum class Tokentype{
     EQUALS,
     SEMI,
     PRINT,
+    PLUS,
+    MINUS,
+    STAR,
+    DIVIDE,
 };
 
 struct Token{
     Tokentype type;
     std::optional<std::string> value;
 };
+
+
+std::optional<int> bin_precidance(Tokentype type){
+    switch (type)
+    {
+    case Tokentype::MINUS:
+    case Tokentype::PLUS:
+        return 0;
+    case Tokentype::DIVIDE:
+    case Tokentype::STAR:
+        return 1;
+    default:
+        return {};
+    }
+}
 
 
 class Tokenize{
@@ -89,6 +108,26 @@ class Tokenize{
                     consume();
                     tokens.push_back({Tokentype::SEMI});
                     continue;   
+                }
+                else if (peak().value() == '+'){
+                    consume();
+                    tokens.push_back({Tokentype::PLUS});
+                    continue;
+                }
+                else if (peak().value() == '-'){
+                    consume();
+                    tokens.push_back({Tokentype::MINUS});
+                    continue;
+                }
+                else if (peak().value() == '*'){
+                    consume();
+                    tokens.push_back({Tokentype::STAR});
+                    continue;
+                }
+                else if (peak().value() == '/'){
+                    consume();
+                    tokens.push_back({Tokentype::DIVIDE});
+                    continue;
                 }
                 else if (isspace(peak().value())){
                     consume();

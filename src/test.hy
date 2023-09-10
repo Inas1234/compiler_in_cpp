@@ -1,4 +1,6 @@
-let x = 1;
+let x = 1 + 2;
 let y = x;
-print(y);
-exit (y);
+
+print(x * 2 + 3 / 3 - 4);
+
+exit (0);

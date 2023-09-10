@@ -26,6 +26,39 @@ class Generator{
                     offset << "QWORD [rsp + " << (gen->stack_size - var.stack_loc - 1) * 8 << "]";
                     gen->push(offset.str());
                 }
+                void operator()(const BinaryExprPlus& node){
+                    gen->gen_expr(*node.lhs);
+                    gen->gen_expr(*node.rhs);
+                    gen->pop("rdi");
+                    gen->pop("rax");
+                    gen->m_output << "    add rax, rdi" << std::endl;
+                    gen->push("rax");
+                }
+                void operator()(const BinaryExprMinus& node){
+                    gen->gen_expr(*node.lhs);
+                    gen->gen_expr(*node.rhs);
+                    gen->pop("rdi");
+                    gen->pop("rax");
+                    gen->m_output << "    sub rax, rdi" << std::endl;
+                    gen->push("rax");
+                }
+                void operator()(const BinaryExprMultiply& node){
+                    gen->gen_expr(*node.lhs);
+                    gen->gen_expr(*node.rhs);
+                    gen->pop("rdi");
+                    gen->pop("rax");
+                    gen->m_output << "    imul rax, rdi" << std::endl;
+                    gen->push("rax");
+                }
+                void operator()(const BinaryExprDivide& node){
+                    gen->gen_expr(*node.lhs);
+                    gen->gen_expr(*node.rhs);
+                    gen->pop("rdi");
+                    gen->pop("rax");
+                    gen->m_output << "    cqo" << std::endl;
+                    gen->m_output << "    idiv rdi" << std::endl;
+                    gen->push("rax");
+                }
             };
             std::visit(ExprVisitor{this}, expr.node);
         }

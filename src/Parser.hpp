@@ -5,6 +5,8 @@
 #include "Tokenizer.hpp"
 #include <optional>
 #include <variant>
+#include <memory>
+
 
 struct NodeExprIntLit {
     Token token;
@@ -18,8 +20,34 @@ struct NodeExprStringLit {
     Token token;
 };
 
+struct NodeExpr;
+
+struct BinaryExprPlus {
+    Token token;
+    std::shared_ptr<NodeExpr> lhs;
+    std::shared_ptr<NodeExpr> rhs;
+};
+
+struct BinaryExprMinus {
+    Token token;
+    std::shared_ptr<NodeExpr> lhs;
+    std::shared_ptr<NodeExpr> rhs;
+};
+
+struct BinaryExprMultiply {
+    Token token;
+    std::shared_ptr<NodeExpr> lhs;
+    std::shared_ptr<NodeExpr> rhs;
+};
+
+struct BinaryExprDivide {
+    Token token;
+    std::shared_ptr<NodeExpr> lhs;
+    std::shared_ptr<NodeExpr> rhs;
+};
+
 struct NodeExpr {
-    std::variant<NodeExprIntLit, NodeExprIdentifier> node;
+    std::variant<NodeExprIntLit, NodeExprIdentifier, BinaryExprPlus, BinaryExprMinus, BinaryExprMultiply, BinaryExprDivide> node;
 };
 
 struct NodeStmtExit
@@ -50,12 +78,61 @@ class Parser {
             m_tokens = tokens;
         }
 
+        [[nodiscard]] std::optional<NodeExpr> parse_expr(){
+            return parseBinOpExpr(0);
+        }
+
+        [[nodiscard]] std::optional<NodeExpr> parseBinOpExpr(int prec){
+            std::optional<NodeExpr> left = parsePrimaryExpr();
+            if (!left.has_value()){
+                return {};
+            }
+            
+            while (true) {
+                if (!peak().has_value()) {
+                    return left;
+                }
+                
+                std::optional<int> nextPrec = bin_precidance(peak().value().type);
+                if (!nextPrec.has_value() || nextPrec.value() < prec) {
+                    return left;
+                }
+                
+                Tokentype opType = peak().value().type;
+                Token token = consume();
+                
+                std::optional<NodeExpr> right = parseBinOpExpr(nextPrec.value() + 1);
+                if (!right.has_value()){
+                    return {};
+                }
+                
+                switch (opType) {
+                    case Tokentype::PLUS:
+                        left = NodeExpr{.node = BinaryExprPlus{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};
+                        break;
+                    case Tokentype::MINUS:
+                        left = NodeExpr{.node = BinaryExprMinus{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};
+                        break;
+                    case Tokentype::STAR:
+                        left = NodeExpr{.node = BinaryExprMultiply{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};
+                        break;
+                    case Tokentype::DIVIDE:
+                        left = NodeExpr{.node = BinaryExprDivide{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};
+                        break;
+                    default:
+                        return {};  // error
+                }
+            }
+        }
+
+
+
         [[nodiscard]] std::optional<NodeStmt> parse_stmt(){
             if (peak().value().type == Tokentype::EXIT && peak(1).value().type == Tokentype::OPENPAREN) {
                 consume();
                 consume();
                 NodeStmtExit node_stmt;
-                if (auto node = parseExpr()) {
+                if (auto node = parse_expr()) {
                     node_stmt = NodeStmtExit({node.value()});
                 }
                 else {
@@ -84,7 +161,7 @@ class Parser {
                 consume();
                 auto stmt_let = NodeStmtLet{.identifier = consume()};
                 consume();
-                if (auto node = parseExpr()) {
+                if (auto node = parse_expr()) {
                     stmt_let.expr = node.value();
                 }
                 else {
@@ -107,7 +184,7 @@ class Parser {
                 consume();
 
                 NodeStmtPrint node_stmt;
-                if (auto node = parseExpr()) {
+                if (auto node = parse_expr()) {
                     node_stmt = NodeStmtPrint({node.value()});
                 }
                 else {
@@ -153,7 +230,7 @@ class Parser {
 
             return node_prog;
         }
-        [[nodiscard]] std::optional<NodeExpr> parseExpr() {
+        [[nodiscard]] std::optional<NodeExpr> parsePrimaryExpr() {
             NodeExpr node;
 
             if (peak().has_value() && peak().value().type == Tokentype::INTLIT) {
