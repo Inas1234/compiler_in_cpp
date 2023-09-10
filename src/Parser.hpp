@@ -14,13 +14,20 @@ struct NodeExprIdentifier {
     Token token;
 };
 
+struct NodeExprStringLit {
+    Token token;
+};
+
 struct NodeExpr {
     std::variant<NodeExprIntLit, NodeExprIdentifier> node;
 };
 
-
 struct NodeStmtExit
 {
+    NodeExpr expr;
+};
+
+struct NodeStmtPrint {
     NodeExpr expr;
 };
 
@@ -30,7 +37,7 @@ struct NodeStmtLet {
 };
 
 struct NodeStmt {
-    std::variant<NodeStmtExit, NodeStmtLet> node;
+    std::variant<NodeStmtExit, NodeStmtLet, NodeStmtPrint> node;
 };
 
 struct NodeProg {
@@ -94,7 +101,38 @@ class Parser {
                 }
 
                 return NodeStmt{.node = stmt_let};
-            }else {
+            }
+            else if (peak().value().type == Tokentype::PRINT && peak(1).value().type == Tokentype::OPENPAREN){
+                consume();
+                consume();
+
+                NodeStmtPrint node_stmt;
+                if (auto node = parseExpr()) {
+                    node_stmt = NodeStmtPrint({node.value()});
+                }
+                else {
+                    std::cout << "Error: Invalid syntax" << std::endl;
+                    exit(1);
+                }
+                if (peak().value().type == Tokentype::CLOSEPAREN) {
+                    consume();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax" << std::endl;
+                    exit(1);
+                }
+
+                if (peak().value().type == Tokentype::SEMI) {
+                    consume();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax" << std::endl;
+                    exit(1);
+                }
+
+                return NodeStmt{.node = node_stmt};
+            }
+            else {
                 return {};
             }
 

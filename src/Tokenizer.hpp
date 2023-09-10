@@ -12,7 +12,8 @@ enum class Tokentype{
     LET,
     IDENTIFIER,
     EQUALS,
-    SEMI
+    SEMI,
+    PRINT,
 };
 
 struct Token{
@@ -45,6 +46,11 @@ class Tokenize{
                     }
                     else if (buffer == "let"){
                         tokens.push_back({Tokentype::LET});
+                        buffer.clear();
+                        continue;
+                    }
+                    else if (buffer == "print"){
+                        tokens.push_back({Tokentype::PRINT});
                         buffer.clear();
                         continue;
                     }

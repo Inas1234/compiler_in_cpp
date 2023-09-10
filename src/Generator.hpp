@@ -17,12 +17,10 @@ class Generator{
             struct ExprVisitor {
                 Generator *gen;
                 void operator()(const NodeExprIntLit& node) {
-                    std::cout << "IntLit: " << node.token.value.value() << std::endl;
                     gen->m_output << "    mov rax, " << node.token.value.value() << std::endl;
                     gen->push("rax");
                 }
                 void operator()(const NodeExprIdentifier& node) {
-                    std::cout << "Identifier: " << node.token.value.value() << std::endl;
                     auto& var = gen->m_vars.at(node.token.value.value());
                     std::stringstream offset;
                     offset << "QWORD [rsp + " << (gen->stack_size - var.stack_loc - 1) * 8 << "]";
@@ -47,12 +45,70 @@ class Generator{
                     gen->m_vars.insert({node.identifier.value.value(), Var{gen->stack_size}});
                     gen->gen_expr(node.expr);
                 }
+
+                void operator() (const NodeStmtPrint& node) {
+                    gen->gen_expr(node.expr);
+                    gen->pop("rdi");
+                    gen->m_output << "    call dump" << std::endl;
+                }
             };
             StmtVisitor visitor {.gen = this};
             std::visit(visitor, stmt.node);
         }
 
         [[nodiscard]] std::string gen_prog(){
+            m_output << "segment .text\n";
+            m_output << "dump:\n";
+            m_output << "    push    rbp\n";
+            m_output << "    mov     rbp, rsp\n";
+            m_output << "    sub     rsp, 64\n";
+            m_output << "    mov     QWORD  [rbp-56], rdi\n";
+            m_output << "    mov     QWORD  [rbp-8], 1\n";
+            m_output << "    mov     eax, 32\n";
+            m_output << "    sub     rax, QWORD  [rbp-8]\n";
+            m_output << "    mov     BYTE  [rbp-48+rax], 10\n";
+            m_output << ".L2:\n";
+            m_output << "    mov     rcx, QWORD  [rbp-56]\n";
+            m_output << "    mov  rdx, -3689348814741910323\n";
+            m_output << "    mov     rax, rcx\n";
+            m_output << "    mul     rdx\n";
+            m_output << "    shr     rdx, 3\n";
+            m_output << "    mov     rax, rdx\n";
+            m_output << "    sal     rax, 2\n";
+            m_output << "    add     rax, rdx\n";
+            m_output << "    add     rax, rax\n";
+            m_output << "    sub     rcx, rax\n";
+            m_output << "    mov     rdx, rcx\n";
+            m_output << "    mov     eax, edx\n";
+            m_output << "    lea     edx, [rax+48]\n";
+            m_output << "    mov     eax, 31\n";
+            m_output << "    sub     rax, QWORD  [rbp-8]\n";
+            m_output << "    mov     BYTE  [rbp-48+rax], dl\n";
+            m_output << "    add     QWORD  [rbp-8], 1\n";
+            m_output << "    mov     rax, QWORD  [rbp-56]\n";
+            m_output << "    mov  rdx, -3689348814741910323\n";
+            m_output << "    mul     rdx\n";
+            m_output << "    mov     rax, rdx\n";
+            m_output << "    shr     rax, 3\n";
+            m_output << "    mov     QWORD  [rbp-56], rax\n";
+            m_output << "    cmp     QWORD  [rbp-56], 0\n";
+            m_output << "    jne     .L2\n";
+            m_output << "    mov     eax, 32\n";
+            m_output << "    sub     rax, QWORD  [rbp-8]\n";
+            m_output << "    lea     rdx, [rbp-48]\n";
+            m_output << "    lea     rcx, [rdx+rax]\n";
+            m_output << "    mov     rax, QWORD  [rbp-8]\n";
+            m_output << "    mov     rdx, rax\n";
+            m_output << "    mov     rsi, rcx\n";
+            m_output << "    mov     edi, 1\n";
+            m_output << "    mov     rax, 1\n";
+            m_output << "    syscall\n";
+            m_output << "    nop\n";
+            m_output << "    leave\n";
+            m_output << "    ret\n";
+
+
+
             m_output << "global _start\n_start:\n";
             for (auto stmt : m_node.nodes){
                 gen_stmt(stmt);
