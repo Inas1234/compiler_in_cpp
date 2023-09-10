@@ -18,6 +18,10 @@ enum class Tokentype{
     MINUS,
     STAR,
     DIVIDE,
+    IFEQUAL,
+    IFNOTEQUAL,
+    IFGREATER,
+    IFLESSER
 };
 
 struct Token{
@@ -29,6 +33,10 @@ struct Token{
 std::optional<int> bin_precidance(Tokentype type){
     switch (type)
     {
+    case Tokentype::IFNOTEQUAL:
+    case Tokentype::IFLESSER:
+    case Tokentype::IFEQUAL:
+    case Tokentype::IFGREATER:
     case Tokentype::MINUS:
     case Tokentype::PLUS:
         return 0;
@@ -87,6 +95,28 @@ class Tokenize{
                     }
                     tokens.push_back({Tokentype::INTLIT, buffer});
                     buffer.clear();
+                    continue;
+                }
+                else if (peak().value() == '?' && peak(1).value() == '='){
+                    consume();
+                    consume();
+                    tokens.push_back({Tokentype::IFEQUAL});
+                    continue;
+                }
+                else if (peak().value() == '!' && peak(1).value() == '='){
+                    consume();
+                    consume();
+                    tokens.push_back({Tokentype::IFNOTEQUAL});
+                    continue;
+                }
+                else if (peak().value() == '>'){
+                    consume();
+                    tokens.push_back({Tokentype::IFGREATER});
+                    continue;
+                }
+                else if (peak().value() == '<'){
+                    consume();
+                    tokens.push_back({Tokentype::IFLESSER});
                     continue;
                 }
                 else if (peak().value() == '('){

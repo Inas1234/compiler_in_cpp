@@ -59,6 +59,42 @@ class Generator{
                     gen->m_output << "    idiv rdi" << std::endl;
                     gen->push("rax");
                 }
+                void operator()(const NodeExprIfEqual& node){
+                    gen->gen_expr(*node.lhs);
+                    gen->gen_expr(*node.rhs);
+                    gen->pop("rdi");
+                    gen->pop("rax");
+                    gen->m_output << "    cmp rax, rdi" << std::endl;
+                    gen->m_output << "    sete al" << std::endl;
+                    gen->push("rax");
+                }
+                void operator()(const NodeExprIfGreater& node){
+                    gen->gen_expr(*node.lhs);
+                    gen->gen_expr(*node.rhs);
+                    gen->pop("rdi");
+                    gen->pop("rax");
+                    gen->m_output << "    cmp rax, rdi" << std::endl;
+                    gen->m_output << "    setg al" << std::endl;
+                    gen->push("rax");
+                }
+                void operator()(const NodeExprIfNotEqual& node){
+                    gen->gen_expr(*node.lhs);
+                    gen->gen_expr(*node.rhs);
+                    gen->pop("rdi");
+                    gen->pop("rax");
+                    gen->m_output << "    cmp rax, rdi" << std::endl;
+                    gen->m_output << "    setne al" << std::endl;
+                    gen->push("rax");
+                }
+                void operator()(const NodeExprIfLesser& node){
+                    gen->gen_expr(*node.lhs);
+                    gen->gen_expr(*node.rhs);
+                    gen->pop("rdi");
+                    gen->pop("rax");
+                    gen->m_output << "    cmp rax, rdi" << std::endl;
+                    gen->m_output << "    setl al" << std::endl;
+                    gen->push("rax");
+                }
             };
             std::visit(ExprVisitor{this}, expr.node);
         }

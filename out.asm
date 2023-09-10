@@ -58,35 +58,14 @@ _start:
     add rax, rdi
     push rax
     push QWORD [rsp + 0]
-    push QWORD [rsp + 8]
-    mov rax, 2
-    push rax
-    pop rdi
-    pop rax
-    imul rax, rdi
-    push rax
-    mov rax, 3
-    push rax
-    mov rax, 3
-    push rax
-    pop rdi
-    pop rax
-    cqo
-    idiv rdi
-    push rax
-    pop rdi
-    pop rax
-    add rax, rdi
-    push rax
-    mov rax, 4
-    push rax
-    pop rdi
-    pop rax
-    sub rax, rdi
-    push rax
-    pop rdi
-    call dump
     push QWORD [rsp + 0]
+    mov rax, 1
+    push rax
+    pop rdi
+    pop rax
+    cmp rax, rdi
+    setl al
+    push rax
     pop rdi
     call dump
     mov rax, 0

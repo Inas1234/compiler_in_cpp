@@ -46,8 +46,35 @@ struct BinaryExprDivide {
     std::shared_ptr<NodeExpr> rhs;
 };
 
+struct NodeExprIfEqual {
+    Token token;
+    std::shared_ptr<NodeExpr> lhs;
+    std::shared_ptr<NodeExpr> rhs;
+};
+
+struct NodeExprIfNotEqual {
+    Token token;
+    std::shared_ptr<NodeExpr> lhs;
+    std::shared_ptr<NodeExpr> rhs;
+};
+
+struct NodeExprIfGreater {
+    Token token;
+    std::shared_ptr<NodeExpr> lhs;
+    std::shared_ptr<NodeExpr> rhs;
+};
+
+struct NodeExprIfLesser {
+    Token token;
+    std::shared_ptr<NodeExpr> lhs;
+    std::shared_ptr<NodeExpr> rhs;
+};
+
 struct NodeExpr {
-    std::variant<NodeExprIntLit, NodeExprIdentifier, BinaryExprPlus, BinaryExprMinus, BinaryExprMultiply, BinaryExprDivide> node;
+    std::variant<NodeExprIntLit, NodeExprIdentifier, BinaryExprPlus, 
+    BinaryExprMinus, BinaryExprMultiply, BinaryExprDivide, 
+    NodeExprIfEqual, NodeExprIfGreater, NodeExprIfNotEqual,
+    NodeExprIfLesser> node;
 };
 
 struct NodeStmtExit
@@ -100,13 +127,24 @@ class Parser {
                 
                 Tokentype opType = peak().value().type;
                 Token token = consume();
-                
                 std::optional<NodeExpr> right = parseBinOpExpr(nextPrec.value() + 1);
                 if (!right.has_value()){
                     return {};
                 }
-                
+
                 switch (opType) {
+                    case Tokentype::IFEQUAL:
+                        left = NodeExpr{.node = NodeExprIfEqual{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};
+                        break;
+                    case Tokentype::IFNOTEQUAL:
+                        left = NodeExpr{.node = NodeExprIfNotEqual{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};
+                        break;
+                    case Tokentype::IFGREATER:
+                        left = NodeExpr{.node = NodeExprIfGreater{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};
+                        break;
+                    case Tokentype::IFLESSER:
+                        left = NodeExpr{.node = NodeExprIfLesser{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};
+                        break;
                     case Tokentype::PLUS:
                         left = NodeExpr{.node = BinaryExprPlus{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};
                         break;
@@ -136,7 +174,7 @@ class Parser {
                     node_stmt = NodeStmtExit({node.value()});
                 }
                 else {
-                    std::cout << "Error: Invalid syntax" << std::endl;
+                    std::cout << "Error: Invalid syntax exit" << std::endl;
                     exit(1);
                 }
 
@@ -144,7 +182,7 @@ class Parser {
                     consume();
                 }
                 else {
-                    std::cout << "Error: Invalid syntax" << std::endl;
+                    std::cout << "Error: Invalid syntax exit" << std::endl;
                     exit(1);
                 }
 
@@ -152,7 +190,7 @@ class Parser {
                     consume();
                 }
                 else {
-                    std::cout << "Error: Invalid syntax" << std::endl;
+                    std::cout << "Error: Invalid syntax exit" << std::endl;
                     exit(1);
                 }
                 return NodeStmt{.node = node_stmt};
@@ -165,7 +203,7 @@ class Parser {
                     stmt_let.expr = node.value();
                 }
                 else {
-                    std::cout << "Error: Invalid syntax" << std::endl;
+                    std::cout << "Error: Invalid syntax let" << std::endl;
                     exit(1);
                 }
 
@@ -173,7 +211,7 @@ class Parser {
                     consume();
                 }
                 else {
-                    std::cout << "Error: Invalid syntax" << std::endl;
+                    std::cout << "Error: Invalid syntax let" << std::endl;
                     exit(1);
                 }
 
@@ -188,14 +226,14 @@ class Parser {
                     node_stmt = NodeStmtPrint({node.value()});
                 }
                 else {
-                    std::cout << "Error: Invalid syntax" << std::endl;
+                    std::cout << "Error: Invalid syntax print()" << std::endl;
                     exit(1);
                 }
                 if (peak().value().type == Tokentype::CLOSEPAREN) {
                     consume();
                 }
                 else {
-                    std::cout << "Error: Invalid syntax" << std::endl;
+                    std::cout << "Error: Invalid syntax print()" << std::endl;
                     exit(1);
                 }
 
@@ -203,7 +241,7 @@ class Parser {
                     consume();
                 }
                 else {
-                    std::cout << "Error: Invalid syntax" << std::endl;
+                    std::cout << "Error: Invalid syntax print()" << std::endl;
                     exit(1);
                 }
 
