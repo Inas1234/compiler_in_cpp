@@ -29,7 +29,8 @@ enum class Tokentype{
     BRACKET_CLOSE,
     STRINGLIT,
     PRINTSTR,
-    FOR
+    FOR,
+    INCLUDE
 };
 
 struct Token{
@@ -111,6 +112,11 @@ class Tokenize{
                     }
                     else if (buffer == "for"){
                         tokens.push_back({Tokentype::FOR});
+                        buffer.clear();
+                        continue;
+                    }
+                    else if (buffer == "include"){
+                        tokens.push_back({Tokentype::INCLUDE});
                         buffer.clear();
                         continue;
                     }

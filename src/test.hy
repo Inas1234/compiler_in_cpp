@@ -1,17 +1,13 @@
-let x = 1 + 2;
-let y = x;
+include "io.hy"
+
 let i = 0;
-let j = 0;
-for(i; i < 3; i = i+1;) {
-    prints("i = ");
+let x = 2 + 1;
+
+
+for(i; i < 10; i = i + 1;) {
     print(i);
-    j = 0;
-    for(j; j < 3; j = j+1;) {
-        prints("j = ");
-        print(j);
-        
-    }
 }
 
+print(o);
 
 exit (0);

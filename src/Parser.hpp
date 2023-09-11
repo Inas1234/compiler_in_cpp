@@ -6,7 +6,7 @@
 #include <optional>
 #include <variant>
 #include <memory>
-
+#include <fstream>
 
 struct NodeExprIntLit {
     Token token;
@@ -458,7 +458,10 @@ class Parser {
             NodeProg node_prog;
 
             while (peak().has_value()) {
-                if (auto node = parse_stmt()) {
+                if (peak().value().type == Tokentype::INCLUDE){
+                    handleInclude();
+                }
+                else if (auto node = parse_stmt()) {
                     node_prog.nodes.push_back(node.value());
                 }
                 else {
@@ -469,6 +472,40 @@ class Parser {
 
             return node_prog;
         }
+
+        void handleInclude(){
+            consume();
+            Token token;
+            if (peak().value().type == Tokentype::STRINGLIT) {
+                token = consume();
+            }
+            else {
+                std::cout << "Error: Invalid syntax expected string" << std::endl;
+                exit(1);
+            }
+            std::optional<std::string> filename = token.value;
+            if (!filename.has_value()) {
+                std::cout << "Error: Invalid syntax expected file path" << std::endl;
+                exit(1);
+            }
+            std::cout << "Including file: " << filename.value() << std::endl;
+            std::string output;
+            {
+                std::ifstream input("./src/include/" + filename.value());
+                if (!input.is_open()) {
+                    std::cout << "Error: Could not open file" << std::endl;
+                    exit(1);
+                }
+                std::stringstream buffer;
+                buffer << input.rdbuf();
+                output = buffer.str();
+            }
+            std::cout << "OUTPUT: " << output << std::endl;
+            Tokenize tokenizer(output);
+            std::vector<Token> tokens = tokenizer.tokenize();
+            m_tokens.insert(m_tokens.begin() + m_index, tokens.begin(), tokens.end());
+        }
+
         [[nodiscard]] std::optional<NodeExpr> parsePrimaryExpr() {
             NodeExpr node;
 

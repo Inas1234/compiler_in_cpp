@@ -135,14 +135,16 @@ class Generator{
                         exit(1);
                     }
                     std::string varLabel = "var_" + node.identifier.value.value();
-                    gen->m_dataSection << varLabel << ": dq 0" << std::endl; // Assuming a default value of 0, for 64-bit variables.
+                    gen->m_dataSection << varLabel << ": dq 0" << std::endl; 
 
                     gen->m_vars.insert({node.identifier.value.value(), Var{gen->stack_size, varLabel}});
                     gen->gen_expr(node.expr);
+                    gen->m_output << "    pop rax" << std::endl; // Pop the result into the rax register
+                    gen->m_output << "    mov [" << varLabel << "], rax" << std::endl; // Move the result from rax to the variable's location
+
                 }
 
                 void operator()(const NodeStmtAssign& node) {
-                    gen->m_output << "    ; Assigning variable" << std::endl;
                     auto it = gen->m_vars.find(node.identifier.value.value());
 
                     if (it == gen->m_vars.end()) {
@@ -151,8 +153,9 @@ class Generator{
                     }
 
                     Var var = it->second;
-                    
+                    std::string offset = var.label;
                     gen->gen_expr(node.expr);
+                    gen->m_output << "    ; Assigning variable" << std::endl;
                     gen->pop("rax");
                     gen->m_output << "    mov [" << var.label << "], rax" << std::endl; // Storing the value in the data section
                 }

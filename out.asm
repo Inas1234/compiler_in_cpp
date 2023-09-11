@@ -51,28 +51,30 @@ global _start
 _start:
     ; Declearing variable
     ; Pushing Integer Literal
-    mov rax, 1
+    mov rax, 20
     push rax
+    pop rax
+    mov [var_o], rax
+    ; Declearing variable
+    ; Pushing Integer Literal
+    mov rax, 0
+    push rax
+    pop rax
+    mov [var_i], rax
+    ; Declearing variable
     ; Pushing Integer Literal
     mov rax, 2
+    push rax
+    ; Pushing Integer Literal
+    mov rax, 1
     push rax
     ; Adding
     pop rdi
     pop rax
     add rax, rdi
     push rax
-    ; Declearing variable
-    ; Pushing Variable
-    mov rax, [var_x]
-    push rax
-    ; Declearing variable
-    ; Pushing Integer Literal
-    mov rax, 0
-    push rax
-    ; Declearing variable
-    ; Pushing Integer Literal
-    mov rax, 0
-    push rax
+    pop rax
+    mov [var_x], rax
     ; Pushing Variable
     mov rax, [var_i]
     push rax
@@ -81,7 +83,7 @@ FOR_START_0:
     mov rax, [var_i]
     push rax
     ; Pushing Integer Literal
-    mov rax, 3
+    mov rax, 10
     push rax
     ; Checkign if lesser
     pop rdi
@@ -92,78 +94,12 @@ FOR_START_0:
     pop rax
     cmp rax, 0
     je FOR_END_0
-    ; Pushing String Literal
-    lea rax, [str_0_4]
-    push rax
-    pop rdi
-    mov rsi, rdi
-    mov rax, 1
-    mov rdi, 1
-    mov rdx, 4
-    syscall
     ; Printing number
     ; Pushing Variable
     mov rax, [var_i]
     push rax
     pop rdi
     call dump
-    ; Assigning variable
-    ; Pushing Integer Literal
-    mov rax, 0
-    push rax
-    pop rax
-    mov [var_j], rax
-    ; Pushing Variable
-    mov rax, [var_j]
-    push rax
-FOR_START_1:
-    ; Pushing Variable
-    mov rax, [var_j]
-    push rax
-    ; Pushing Integer Literal
-    mov rax, 3
-    push rax
-    ; Checkign if lesser
-    pop rdi
-    pop rax
-    cmp rax, rdi
-    setl al
-    push rax
-    pop rax
-    cmp rax, 0
-    je FOR_END_1
-    ; Pushing String Literal
-    lea rax, [str_1_4]
-    push rax
-    pop rdi
-    mov rsi, rdi
-    mov rax, 1
-    mov rdi, 1
-    mov rdx, 4
-    syscall
-    ; Printing number
-    ; Pushing Variable
-    mov rax, [var_j]
-    push rax
-    pop rdi
-    call dump
-    ; Assigning variable
-    ; Pushing Variable
-    mov rax, [var_j]
-    push rax
-    ; Pushing Integer Literal
-    mov rax, 1
-    push rax
-    ; Adding
-    pop rdi
-    pop rax
-    add rax, rdi
-    push rax
-    pop rax
-    mov [var_j], rax
-    jmp FOR_START_1
-FOR_END_1:
-    ; Assigning variable
     ; Pushing Variable
     mov rax, [var_i]
     push rax
@@ -175,10 +111,17 @@ FOR_END_1:
     pop rax
     add rax, rdi
     push rax
+    ; Assigning variable
     pop rax
     mov [var_i], rax
     jmp FOR_START_0
 FOR_END_0:
+    ; Printing number
+    ; Pushing Variable
+    mov rax, [var_o]
+    push rax
+    pop rdi
+    call dump
     ; Pushing Integer Literal
     mov rax, 0
     push rax
@@ -189,10 +132,7 @@ FOR_END_0:
     mov rdi, 0
     syscall
 segment .data
-str_1_4: db "j = ", 0
-str_0_4: db "i = ", 0
-var_x: dq 0
-var_y: dq 0
+var_o: dq 0
 var_i: dq 0
-var_j: dq 0
+var_x: dq 0
 
