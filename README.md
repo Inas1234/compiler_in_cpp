@@ -1,6 +1,6 @@
 # SyClone Programing Language
 
-Welcome to SyClone, a simple programming language with a focus on pattern printing. This README provides a concise guide on how to use the language and a brief overview of its syntax.
+Welcome to SyClone, Syclone is a programming language that is being developed in C++. It is designed to be easy to use with a simple syntax. The language is compiled in C++ into Assembly code which can then be executed.  
 
 ## Requirements
 To begin using the language you need:
