@@ -17,14 +17,17 @@ class Generator{
             struct ExprVisitor {
                 Generator *gen;
                 void operator()(const NodeExprIntLit& node) {
+                    gen->m_output << "    ; Pushing Integer Literal"<< std::endl;
                     gen->m_output << "    mov rax, " << node.token.value.value() << std::endl;
                     gen->push("rax");
                 }
                 void operator()(const NodeExprStringLit& node) {
+                    gen->m_output << "    ; Pushing String Literal"<< std::endl;
                     gen->m_output << "    lea rax, [" << gen->get_string_label(node.token.value.value()) << "]" << std::endl;
                     gen->push("rax");
                 }
                 void operator()(const NodeExprIdentifier& node) {
+                    gen->m_output << "    ; Pushing Variable"<< std::endl;
                     const auto& var = gen->m_vars.at(node.token.value.value());
                     std::stringstream offset;
                     offset << "QWORD [rsp + " << (gen->stack_size - var.stack_loc - 1) * 8 << "]";
@@ -33,6 +36,7 @@ class Generator{
                 void operator()(const BinaryExprPlus& node){
                     gen->gen_expr(*node.lhs);
                     gen->gen_expr(*node.rhs);
+                    gen->m_output << "    ; Adding"<< std::endl;
                     gen->pop("rdi");
                     gen->pop("rax");
                     gen->m_output << "    add rax, rdi" << std::endl;
@@ -41,6 +45,7 @@ class Generator{
                 void operator()(const BinaryExprMinus& node){
                     gen->gen_expr(*node.lhs);
                     gen->gen_expr(*node.rhs);
+                    gen->m_output << "    ; Subtracting"<< std::endl;
                     gen->pop("rdi");
                     gen->pop("rax");
                     gen->m_output << "    sub rax, rdi" << std::endl;
@@ -49,6 +54,7 @@ class Generator{
                 void operator()(const BinaryExprMultiply& node){
                     gen->gen_expr(*node.lhs);
                     gen->gen_expr(*node.rhs);
+                    gen->m_output << "    ; Multiplying"<< std::endl;
                     gen->pop("rdi");
                     gen->pop("rax");
                     gen->m_output << "    imul rax, rdi" << std::endl;
@@ -57,6 +63,7 @@ class Generator{
                 void operator()(const BinaryExprDivide& node){
                     gen->gen_expr(*node.lhs);
                     gen->gen_expr(*node.rhs);
+                    gen->m_output << "    ; Dividing"<< std::endl;
                     gen->pop("rdi");
                     gen->pop("rax");
                     gen->m_output << "    cqo" << std::endl;
@@ -66,6 +73,7 @@ class Generator{
                 void operator()(const NodeExprIfEqual& node){
                     gen->gen_expr(*node.lhs);
                     gen->gen_expr(*node.rhs);
+                    gen->m_output << "    ; Checkign if equal"<< std::endl;
                     gen->pop("rdi");
                     gen->pop("rax");
                     
@@ -77,6 +85,7 @@ class Generator{
                 void operator()(const NodeExprIfGreater& node){
                     gen->gen_expr(*node.lhs);
                     gen->gen_expr(*node.rhs);
+                    gen->m_output << "    ; Checkign if greater"<< std::endl;
                     gen->pop("rdi");
                     gen->pop("rax");
                     gen->m_output << "    cmp rax, rdi" << std::endl;
@@ -86,6 +95,7 @@ class Generator{
                 void operator()(const NodeExprIfNotEqual& node){
                     gen->gen_expr(*node.lhs);
                     gen->gen_expr(*node.rhs);
+                    gen->m_output << "    ; Checkign if not equal"<< std::endl;
                     gen->pop("rdi");
                     gen->pop("rax");
                     gen->m_output << "    cmp rax, rdi" << std::endl;
@@ -95,6 +105,7 @@ class Generator{
                 void operator()(const NodeExprIfLesser& node){
                     gen->gen_expr(*node.lhs);
                     gen->gen_expr(*node.rhs);
+                    gen->m_output << "    ; Checkign if lesser"<< std::endl;
                     gen->pop("rdi");
                     gen->pop("rax");
                     gen->m_output << "    cmp rax, rdi" << std::endl;
@@ -117,6 +128,7 @@ class Generator{
                 }
 
                 void operator() (const NodeStmtLet& node){
+                    gen->m_output << "    ; Declearing variable"<< std::endl;
                     if (gen->m_vars.find(node.identifier.value.value()) != gen->m_vars.end()){
                         std::cout << "Error: Variable already declared" << std::endl;
                         exit(1);
@@ -125,7 +137,21 @@ class Generator{
                     gen->gen_expr(node.expr);
                 }
 
+                void operator()(const NodeStmtAssign& node){
+                    gen->m_output << "    ; Assigning variable"<< std::endl;
+                    if (gen->m_vars.find(node.identifier.value.value()) == gen->m_vars.end()){
+                        std::cout << "Error: Variable not declared" << std::endl;
+                        exit(1);
+                    }
+                    gen->gen_expr(node.expr);
+                    gen->pop("rax");
+                    std::stringstream offset;
+                    offset << "QWORD [rsp + " << (gen->stack_size - gen->m_vars.at(node.identifier.value.value()).stack_loc - 1) * 8 << "]";
+                    gen->m_output << "    mov " << offset.str() << ", rax" << std::endl;
+                }
+
                 void operator() (const NodeStmtPrint& node) {
+                    gen->m_output << "    ; Printing number"<< std::endl;
                     gen->gen_expr(node.expr);
                     gen->pop("rdi");
                     gen->m_output << "    call dump" << std::endl;
@@ -250,8 +276,39 @@ class Generator{
                         void operator()(const NodeExprIfLesser&) {
                         }
                     };
-
                     std::visit(ExprTypeVisitor{gen}, node.expr.node);
+                }
+                void operator()(const NodeStmtFor& node) {
+                    // Label creation for loop handling
+                    static int labelCounter = 0;
+                    int currentLabel = labelCounter++;
+
+                    std::string startLabel = "FOR_START_" + std::to_string(currentLabel);
+                    std::string endLabel = "FOR_END_" + std::to_string(currentLabel);
+
+                    // Generate code for the initialization statement
+                    gen->gen_expr(node.initialization);
+
+                    gen->m_output << startLabel << ":\n";
+
+                    // Generate code for the condition
+                    gen->gen_expr(node.condition);
+                    gen->pop("rax");
+                    gen->m_output << "    cmp rax, 0" << std::endl;  // Assuming 0 is false
+                    gen->m_output << "    je " << endLabel << std::endl;
+
+                    // Generate code for the body
+                    for (const auto& stmt : node.nodes) {
+                        gen->gen_stmt(*stmt);
+                    }
+
+                    // Generate code for the post-iteration expression
+                    gen->gen_stmt(*node.iteration);
+
+                    // Loop back to the start
+                    gen->m_output << "    jmp " << startLabel << std::endl;
+
+                    gen->m_output << endLabel << ":\n";
                 }
 
             };

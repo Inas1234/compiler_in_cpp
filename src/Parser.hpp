@@ -102,8 +102,22 @@ struct NodeStmtIf {
     std::vector<std::shared_ptr<NodeStmt>> nodes;
 };
 
+struct NodeStmtFor {
+    NodeExpr initialization;
+    NodeExpr condition;
+    std::shared_ptr<NodeStmt> iteration;
+    std::vector<std::shared_ptr<NodeStmt>> nodes;
+};
+
+
+struct NodeStmtAssign{
+    Token identifier;
+    NodeExpr expr;
+};
+
+
 struct NodeStmt {
-    std::variant<NodeStmtExit, NodeStmtLet, NodeStmtPrint, NodeStmtIf, NodeStmtPrintStr> node;
+    std::variant<NodeStmtExit, NodeStmtLet, NodeStmtPrint, NodeStmtIf, NodeStmtPrintStr, NodeStmtFor, NodeStmtAssign> node;
 };
 
 struct NodeProg {
@@ -336,6 +350,102 @@ class Parser {
                 }
 
                 return NodeStmt{.node = node_stmt};
+            }
+            else if (peak().value().type == Tokentype::FOR && peak(1).value().type == Tokentype::OPENPAREN) {
+                consume();
+                consume();
+
+                NodeStmtFor node_stmt;
+                if (auto node = parse_expr()) {  // Assuming the initialization is an expression for simplicity
+                    node_stmt.initialization = node.value();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax in for loop initialization" << std::endl;
+                    exit(1);
+                }
+
+                if (peak().value().type != Tokentype::SEMI) {
+                    std::cout << "Error: Expected ; after initialization in for loop" << std::endl;
+                    exit(1);
+                }
+                consume();
+
+                if (auto node = parse_expr()) {  // The loop condition
+                    node_stmt.condition = node.value();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax in for loop condition" << std::endl;
+                    exit(1);
+                }
+
+                if (peak().value().type != Tokentype::SEMI) {
+                    std::cout << "Error: Expected ; after condition in for loop" << std::endl;
+                    exit(1);
+                }
+                consume();
+
+                if (auto node = parse_stmt()) {  // The iteration step
+                    node_stmt.iteration =  std::make_shared<NodeStmt>(node.value());
+                }
+                else {
+                    std::cout << "Error: Invalid syntax in for loop iteration " << std::endl;
+                    exit(1);
+                }
+
+                if (peak().value().type != Tokentype::CLOSEPAREN) {
+                    std::cout << "Error: Expected ) after for loop header" << std::endl;
+                    exit(1);
+                }
+                consume();
+
+                if (peak().value().type == Tokentype::BRACKET_OPEN) {
+                    consume();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax in for loop body" << std::endl;
+                    exit(1);
+                }
+
+                while (peak().has_value() && peak().value().type != Tokentype::BRACKET_CLOSE) {
+                    if (auto node = parse_stmt()) {
+                        node_stmt.nodes.push_back(std::make_shared<NodeStmt>(node.value()));
+                    }
+                    else {
+                        std::cout << "Error: Invalid syntax in for loop body" << std::endl;
+                        exit(1);
+                    }
+                }
+
+                if (peak().value().type == Tokentype::BRACKET_CLOSE) {
+                    consume();
+                }
+                else {
+                    std::cout << "Error: Expected } after for loop body" << std::endl;
+                    exit(1);
+                }
+
+                return NodeStmt{.node = node_stmt};
+            }
+            else if (peak().value().type == Tokentype::IDENTIFIER && peak(1).value().type == Tokentype::EQUALS) {
+                auto stmt_assign = NodeStmtAssign{.identifier = consume()};
+                consume();
+                if (auto node = parse_expr()) {
+                    stmt_assign.expr = node.value();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax in assignment" << std::endl;
+                    exit(1);
+                }
+
+                if (peak().value().type == Tokentype::SEMI) {
+                    consume();
+                }
+                else {
+                    std::cout << "Error: Expected ; after assignment" << std::endl;
+                    exit(1);
+                }
+
+                return NodeStmt{.node = stmt_assign};
             }
 
             else {

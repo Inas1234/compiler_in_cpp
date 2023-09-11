@@ -28,7 +28,8 @@ enum class Tokentype{
     BRACKET_OPEN,
     BRACKET_CLOSE,
     STRINGLIT,
-    PRINTSTR
+    PRINTSTR,
+    FOR
 };
 
 struct Token{
@@ -105,6 +106,11 @@ class Tokenize{
                     }
                     else if (buffer == "prints"){
                         tokens.push_back({Tokentype::PRINTSTR});
+                        buffer.clear();
+                        continue;
+                    }
+                    else if (buffer == "for"){
+                        tokens.push_back({Tokentype::FOR});
                         buffer.clear();
                         continue;
                     }

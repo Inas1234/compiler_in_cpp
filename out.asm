@@ -49,41 +49,72 @@ dump:
     ret
 global _start
 _start:
+    ; Declearing variable
+    ; Pushing Integer Literal
     mov rax, 1
     push rax
+    ; Pushing Integer Literal
     mov rax, 2
     push rax
+    ; Adding
     pop rdi
     pop rax
     add rax, rdi
     push rax
+    ; Declearing variable
+    ; Pushing Variable
     push QWORD [rsp + 0]
-    lea rax, [str_0_1]
+    ; Declearing variable
+    ; Pushing Integer Literal
+    mov rax, 10
     push rax
-    lea rax, [str_1_1]
+    ; Pushing Variable
+    push QWORD [rsp + 0]
+FOR_START_0:
+    ; Pushing Variable
+    push QWORD [rsp + 8]
+    ; Pushing Integer Literal
+    mov rax, 0
     push rax
-    push QWORD [rsp + 24]
-    mov rax, 3
-    push rax
+    ; Checkign if greater
     pop rdi
     pop rax
     cmp rax, rdi
-    sete al
+    setg al
     push rax
     pop rax
-    cmp rax, 1
-    je IF_TRUE_0
-    jmp IF_END_0
-IF_TRUE_0:
-    lea rax, [str_1_13]
+    cmp rax, 0
+    je FOR_END_0
+    ; Pushing String Literal
+    lea rax, [str_0_4]
     push rax
     pop rdi
     mov rsi, rdi
     mov rax, 1
     mov rdi, 1
-    mov rdx, 13
+    mov rdx, 4
     syscall
-IF_END_0:
+    ; Printing number
+    ; Pushing Variable
+    push QWORD [rsp + 8]
+    pop rdi
+    call dump
+    ; Assigning variable
+    ; Pushing Variable
+    push QWORD [rsp + 8]
+    ; Pushing Integer Literal
+    mov rax, 1
+    push rax
+    ; Subtracting
+    pop rdi
+    pop rax
+    sub rax, rdi
+    push rax
+    pop rax
+    mov QWORD [rsp + 8], rax
+    jmp FOR_START_0
+FOR_END_0:
+    ; Pushing Integer Literal
     mov rax, 0
     push rax
     mov rax, 60
@@ -93,6 +124,4 @@ IF_END_0:
     mov rdi, 0
     syscall
 segment .data
-str_1_13: db "Hello World! ", 0
-str_0_1: db "1", 0
-str_1_1: db "1", 0
+str_0_4: db "i = ", 0
