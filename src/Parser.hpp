@@ -116,10 +116,16 @@ struct NodeStmtLet {
 
 struct NodeStmt;
 
+struct NodeStmtElse {
+    std::vector<std::shared_ptr<NodeStmt>> nodes;
+};
 struct NodeStmtIf {
     NodeExpr condition;
     std::vector<std::shared_ptr<NodeStmt>> nodes;
+    std::shared_ptr<NodeStmtElse> else_node;       // Optional 'else' block.
 };
+
+
 
 struct NodeStmtFor {
     NodeExpr initialization;
@@ -342,6 +348,37 @@ class Parser {
                 else {
                     std::cout << "Error: Invalid syntax if()" << std::endl;
                     exit(1);
+                }
+
+                if (peak().value().type == Tokentype::ELSE) {
+                    consume(); // Consume the ELSE token
+
+                    NodeStmtElse node_else;
+
+                    // Check for a block of statements for the 'else' part
+                    if (peak().value().type != Tokentype::BRACKET_OPEN) {
+                        std::cout << "Error: Invalid syntax else" << std::endl;
+                        exit(1);
+                    }
+                    consume(); // Consume the opening bracket
+
+                    while (peak().has_value() && peak().value().type != Tokentype::BRACKET_CLOSE) {
+                        if (auto node = parse_stmt()) {
+                            node_else.nodes.push_back(std::make_shared<NodeStmt>(node.value()));
+                        }
+                        else {
+                            std::cout << "Error: Invalid syntax else" << std::endl;
+                            exit(1);
+                        }
+                    }
+
+                    if (peak().value().type != Tokentype::BRACKET_CLOSE) {
+                        std::cout << "Error: Invalid syntax else" << std::endl;
+                        exit(1);
+                    }
+                    consume(); // Consume the closing bracket
+
+                    node_stmt.else_node = std::make_shared<NodeStmtElse>(node_else); 
                 }
 
                 return NodeStmt{.node = node_stmt};

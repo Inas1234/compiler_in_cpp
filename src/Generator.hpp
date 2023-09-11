@@ -201,6 +201,7 @@ class Generator{
                     int currentLabel = labelCounter++;
 
                     std::string trueLabel = "IF_TRUE_" + std::to_string(currentLabel);
+                    std::string falseLabel = "IF_FALSE_" + std::to_string(currentLabel);
                     std::string endLabel = "IF_END_" + std::to_string(currentLabel);
 
                     gen->gen_expr(node.condition);
@@ -252,11 +253,20 @@ class Generator{
 
                     std::visit(JumpVisitor{gen, trueLabel}, node.condition.node);
 
-                    gen->m_output << "    jmp " << endLabel << std::endl;
+                    gen->m_output << "    jmp " << falseLabel << std::endl;  // Go to the ELSE block if condition is not met.
 
                     gen->m_output << trueLabel << ":\n";
                     for (const auto& stmt : node.nodes) {
                         gen->gen_stmt(*stmt);
+                    }
+
+                    gen->m_output << "    jmp " << endLabel << std::endl;  // Jump to end after executing IF block
+
+                    gen->m_output << falseLabel << ":\n";
+                    if (node.else_node) {  // If there's an ELSE block, generate its code.
+                        for (const auto& stmt : node.else_node->nodes) {
+                            gen->gen_stmt(*stmt);
+                        }
                     }
 
                     gen->m_output << endLabel << ":\n";

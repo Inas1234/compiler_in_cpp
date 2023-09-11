@@ -113,18 +113,35 @@ FOR_START_1:
     ; Pushing Variable
     mov rax, [var_j]
     push rax
-    ; Pushing Variable
-    mov rax, [var_i]
+    ; Pushing Integer Literal
+    mov rax, 5
     push rax
-    ; Checkign if lesser or equal
+    ; Checkign if lesser
     pop rdi
     pop rax
     cmp rax, rdi
-    setle al
+    setl al
     push rax
     pop rax
     cmp rax, 0
     je FOR_END_1
+    ; Pushing Variable
+    mov rax, [var_i]
+    push rax
+    ; Pushing Variable
+    mov rax, [var_j]
+    push rax
+    ; Checkign if equal
+    pop rdi
+    pop rax
+    cmp rax, rdi
+    sete al
+    push rax
+    pop rax
+    cmp rax, 1
+    je IF_TRUE_0
+    jmp IF_FALSE_0
+IF_TRUE_0:
     ; Pushing String Literal
     lea rax, [str_0_1]
     push rax
@@ -134,6 +151,18 @@ FOR_START_1:
     mov rdi, 1
     mov rdx, 1
     syscall
+    jmp IF_END_0
+IF_FALSE_0:
+    ; Pushing String Literal
+    lea rax, [str_1_1]
+    push rax
+    pop rdi
+    mov rsi, rdi
+    mov rax, 1
+    mov rdi, 1
+    mov rdx, 1
+    syscall
+IF_END_0:
     ; Pushing Variable
     mov rax, [var_j]
     push rax
@@ -182,6 +211,7 @@ FOR_END_0:
     mov rdi, 0
     syscall
 segment .data
+str_1_1: db " ", 0
 str_0_1: db "*", 0
 var_o: dq 0
 var_i: dq 0
