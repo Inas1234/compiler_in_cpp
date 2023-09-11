@@ -116,11 +116,11 @@ FOR_START_1:
     ; Pushing Variable
     mov rax, [var_i]
     push rax
-    ; Checkign if lesser
+    ; Checkign if lesser or equal
     pop rdi
     pop rax
     cmp rax, rdi
-    setl al
+    setle al
     push rax
     pop rax
     cmp rax, 0

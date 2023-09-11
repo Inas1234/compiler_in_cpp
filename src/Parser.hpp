@@ -70,11 +70,25 @@ struct NodeExprIfLesser {
     std::shared_ptr<NodeExpr> rhs;
 };
 
+struct NodeExprIfGreaterEqual {
+    Token token;
+    std::shared_ptr<NodeExpr> lhs;
+    std::shared_ptr<NodeExpr> rhs;
+};
+
+struct NodeExprIfLesserEqual {
+    Token token;
+    std::shared_ptr<NodeExpr> lhs;
+    std::shared_ptr<NodeExpr> rhs;
+};
+
+
 struct NodeExpr {
     std::variant<NodeExprIntLit, NodeExprIdentifier, BinaryExprPlus, 
     BinaryExprMinus, BinaryExprMultiply, BinaryExprDivide, 
     NodeExprIfEqual, NodeExprIfGreater, NodeExprIfNotEqual,
-    NodeExprIfLesser, NodeExprStringLit> node;
+    NodeExprIfLesser, NodeExprStringLit, NodeExprIfGreaterEqual,
+    NodeExprIfLesserEqual> node;
 };
 
 struct NodeStmtExit
@@ -174,6 +188,12 @@ class Parser {
                         break;
                     case Tokentype::IFLESSER:
                         left = NodeExpr{.node = NodeExprIfLesser{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};
+                        break;
+                    case Tokentype::IFEQUALGREATER:
+                        left = NodeExpr{.node = NodeExprIfGreaterEqual{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};
+                        break;
+                    case Tokentype::IFEQUALLESSER:  
+                        left = NodeExpr{.node = NodeExprIfLesserEqual{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};  
                         break;
                     case Tokentype::PLUS:
                         left = NodeExpr{.node = BinaryExprPlus{.token = token, .lhs = std::make_shared<NodeExpr>(left.value()), .rhs = std::make_shared<NodeExpr>(right.value())}};

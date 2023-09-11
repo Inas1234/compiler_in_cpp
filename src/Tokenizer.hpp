@@ -22,6 +22,8 @@ enum class Tokentype{
     IFNOTEQUAL,
     IFGREATER,
     IFLESSER,
+    IFEQUALGREATER,
+    IFEQUALLESSER,
     IF,
     THEN,
     ELSE,
@@ -43,6 +45,8 @@ struct Token{
 std::optional<int> bin_precidance(Tokentype type){
     switch (type)
     {
+    case Tokentype::IFEQUALLESSER:
+    case Tokentype::IFEQUALGREATER:
     case Tokentype::IFNOTEQUAL:
     case Tokentype::IFLESSER:
     case Tokentype::IFEQUAL:
@@ -172,6 +176,18 @@ class Tokenize{
                 else if (peak().value() == '<'){
                     consume();
                     tokens.push_back({Tokentype::IFLESSER});
+                    continue;
+                }
+                else if (peak().value() == '?' && peak(1).value() == '>'){
+                    consume();
+                    consume();
+                    tokens.push_back({Tokentype::IFEQUALGREATER});
+                    continue;
+                }
+                else if (peak().value() == '?' && peak(1).value() == '<'){
+                    consume();
+                    consume();
+                    tokens.push_back({Tokentype::IFEQUALLESSER});
                     continue;
                 }
                 else if (peak().value() == '('){

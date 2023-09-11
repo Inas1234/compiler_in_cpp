@@ -113,6 +113,26 @@ class Generator{
                     gen->m_output << "    setl al" << std::endl;
                     gen->push("rax");
                 }
+                void operator()(const NodeExprIfGreaterEqual& node){
+                    gen->gen_expr(*node.lhs);
+                    gen->gen_expr(*node.rhs);
+                    gen->m_output << "    ; Checkign if greater or equal"<< std::endl;
+                    gen->pop("rdi");
+                    gen->pop("rax");
+                    gen->m_output << "    cmp rax, rdi" << std::endl;
+                    gen->m_output << "    setge al" << std::endl;
+                    gen->push("rax");
+                }
+                void operator()(const NodeExprIfLesserEqual& node){
+                    gen->gen_expr(*node.lhs);
+                    gen->gen_expr(*node.rhs);
+                    gen->m_output << "    ; Checkign if lesser or equal"<< std::endl;
+                    gen->pop("rdi");
+                    gen->pop("rax");
+                    gen->m_output << "    cmp rax, rdi" << std::endl;
+                    gen->m_output << "    setle al" << std::endl;
+                    gen->push("rax");
+                }
             };
             std::visit(ExprVisitor{this}, expr.node);
         }
@@ -222,6 +242,12 @@ class Generator{
                         void operator()(const NodeExprIfLesser&) {
                             gen->m_output << "    je " << trueLabel << std::endl;
                         }
+                        void operator()(const NodeExprIfGreaterEqual&) {
+                            gen->m_output << "    je " << trueLabel << std::endl;
+                        }
+                        void operator()(const NodeExprIfLesserEqual&) {
+                            gen->m_output << "    je " << trueLabel << std::endl;
+                        }
                     };
 
                     std::visit(JumpVisitor{gen, trueLabel}, node.condition.node);
@@ -293,6 +319,10 @@ class Generator{
                         void operator()(const NodeExprIfNotEqual&) {
                         }
                         void operator()(const NodeExprIfLesser&) {
+                        }
+                        void operator()(const NodeExprIfGreaterEqual&) {
+                        }
+                        void operator()(const NodeExprIfLesserEqual&) {
                         }
                     };
                     std::visit(ExprTypeVisitor{gen}, node.expr.node);
@@ -490,6 +520,10 @@ class Generator{
                 void operator()(const NodeExprIfNotEqual&) {
                 }
                 void operator()(const NodeExprIfLesser&) {
+                }
+                void operator()(const NodeExprIfGreaterEqual&) {
+                }
+                void operator()(const NodeExprIfLesserEqual&) {
                 }
             };
             ExprVisitor visitor;
