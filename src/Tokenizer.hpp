@@ -27,6 +27,8 @@ enum class Tokentype{
     ELSE,
     BRACKET_OPEN,
     BRACKET_CLOSE,
+    STRINGLIT,
+    PRINTSTR
 };
 
 struct Token{
@@ -101,6 +103,11 @@ class Tokenize{
                         buffer.clear();
                         continue;
                     }
+                    else if (buffer == "prints"){
+                        tokens.push_back({Tokentype::PRINTSTR});
+                        buffer.clear();
+                        continue;
+                    }
                     else{
                         tokens.push_back({Tokentype::IDENTIFIER, buffer});
                         buffer.clear();
@@ -114,6 +121,16 @@ class Tokenize{
                         buffer.push_back(consume());
                     }
                     tokens.push_back({Tokentype::INTLIT, buffer});
+                    buffer.clear();
+                    continue;
+                }
+                else if (peak().value() == '"'){
+                    consume();
+                    while (peak().value() != '"'){
+                        buffer.push_back(consume());
+                    }
+                    consume();
+                    tokens.push_back({Tokentype::STRINGLIT, buffer});
                     buffer.clear();
                     continue;
                 }

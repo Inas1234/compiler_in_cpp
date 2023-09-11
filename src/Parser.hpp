@@ -12,11 +12,11 @@ struct NodeExprIntLit {
     Token token;
 };
 
-struct NodeExprIdentifier {
+struct NodeExprStringLit {
     Token token;
 };
 
-struct NodeExprStringLit {
+struct NodeExprIdentifier {
     Token token;
 };
 
@@ -74,7 +74,7 @@ struct NodeExpr {
     std::variant<NodeExprIntLit, NodeExprIdentifier, BinaryExprPlus, 
     BinaryExprMinus, BinaryExprMultiply, BinaryExprDivide, 
     NodeExprIfEqual, NodeExprIfGreater, NodeExprIfNotEqual,
-    NodeExprIfLesser> node;
+    NodeExprIfLesser, NodeExprStringLit> node;
 };
 
 struct NodeStmtExit
@@ -83,6 +83,10 @@ struct NodeStmtExit
 };
 
 struct NodeStmtPrint {
+    NodeExpr expr;
+};
+
+struct NodeStmtPrintStr {
     NodeExpr expr;
 };
 
@@ -99,7 +103,7 @@ struct NodeStmtIf {
 };
 
 struct NodeStmt {
-    std::variant<NodeStmtExit, NodeStmtLet, NodeStmtPrint, NodeStmtIf> node;
+    std::variant<NodeStmtExit, NodeStmtLet, NodeStmtPrint, NodeStmtIf, NodeStmtPrintStr> node;
 };
 
 struct NodeProg {
@@ -303,6 +307,37 @@ class Parser {
 
                 return NodeStmt{.node = node_stmt};
             }
+            else if (peak().value().type == Tokentype::PRINTSTR && peak(1).value().type == Tokentype::OPENPAREN){
+                consume();
+                consume();
+
+                NodeStmtPrintStr node_stmt;
+                if (auto node = parse_expr()) {
+                    node_stmt = NodeStmtPrintStr({node.value()});
+                }
+                else {
+                    std::cout << "Error: Invalid syntax print()" << std::endl;
+                    exit(1);
+                }
+                if (peak().value().type == Tokentype::CLOSEPAREN) {
+                    consume();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax print()" << std::endl;
+                    exit(1);
+                }
+
+                if (peak().value().type == Tokentype::SEMI) {
+                    consume();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax print()" << std::endl;
+                    exit(1);
+                }
+
+                return NodeStmt{.node = node_stmt};
+            }
+
             else {
                 return {};
             }
@@ -329,6 +364,10 @@ class Parser {
 
             if (peak().has_value() && peak().value().type == Tokentype::INTLIT) {
                 node = NodeExpr{.node = NodeExprIntLit{.token = consume()}};    
+                return node;
+            }
+            else if (peak().has_value() && peak().value().type == Tokentype::STRINGLIT) {
+                node = NodeExpr{.node = NodeExprStringLit{.token = consume()}};
                 return node;
             }
             else if (peak().has_value() && peak().value().type == Tokentype::IDENTIFIER) {

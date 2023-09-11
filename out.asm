@@ -27,7 +27,7 @@ dump:
     mov     BYTE  [rbp-48+rax], dl
     add     QWORD  [rbp-8], 1
     mov     rax, QWORD  [rbp-56]
-    mov  rdx, -3689348814741910323
+    mov     rdx, -3689348814741910323
     mul     rdx
     mov     rax, rdx
     shr     rax, 3
@@ -58,8 +58,13 @@ _start:
     add rax, rdi
     push rax
     push QWORD [rsp + 0]
-    push QWORD [rsp + 8]
-    push QWORD [rsp + 8]
+    lea rax, [str_0_1]
+    push rax
+    lea rax, [str_1_1]
+    push rax
+    push QWORD [rsp + 24]
+    mov rax, 3
+    push rax
     pop rdi
     pop rax
     cmp rax, rdi
@@ -70,24 +75,14 @@ _start:
     je IF_TRUE_0
     jmp IF_END_0
 IF_TRUE_0:
-    mov rax, 1
-    push rax
-    mov rax, 1
+    lea rax, [str_1_13]
     push rax
     pop rdi
-    pop rax
-    cmp rax, rdi
-    sete al
-    push rax
-    pop rax
-    cmp rax, 1
-    je IF_TRUE_1
-    jmp IF_END_1
-IF_TRUE_1:
-    push QWORD [rsp + 8]
-    pop rdi
-    call dump
-IF_END_1:
+    mov rsi, rdi
+    mov rax, 1
+    mov rdi, 1
+    mov rdx, 13
+    syscall
 IF_END_0:
     mov rax, 0
     push rax
@@ -97,3 +92,7 @@ IF_END_0:
     mov rax, 60
     mov rdi, 0
     syscall
+segment .data
+str_1_13: db "Hello World! ", 0
+str_0_1: db "1", 0
+str_1_1: db "1", 0
