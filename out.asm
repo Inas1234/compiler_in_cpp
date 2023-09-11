@@ -75,6 +75,12 @@ _start:
     push rax
     pop rax
     mov [var_x], rax
+    ; Declearing variable
+    ; Pushing Integer Literal
+    mov rax, 0
+    push rax
+    pop rax
+    mov [var_j], rax
     ; Pushing Variable
     mov rax, [var_i]
     push rax
@@ -83,7 +89,7 @@ FOR_START_0:
     mov rax, [var_i]
     push rax
     ; Pushing Integer Literal
-    mov rax, 10
+    mov rax, 5
     push rax
     ; Checkign if lesser
     pop rdi
@@ -94,12 +100,62 @@ FOR_START_0:
     pop rax
     cmp rax, 0
     je FOR_END_0
-    ; Printing number
+    ; Pushing Integer Literal
+    mov rax, 0
+    push rax
+    ; Assigning variable
+    pop rax
+    mov [var_j], rax
+    ; Pushing Variable
+    mov rax, [var_j]
+    push rax
+FOR_START_1:
+    ; Pushing Variable
+    mov rax, [var_j]
+    push rax
     ; Pushing Variable
     mov rax, [var_i]
     push rax
+    ; Checkign if lesser
     pop rdi
-    call dump
+    pop rax
+    cmp rax, rdi
+    setl al
+    push rax
+    pop rax
+    cmp rax, 0
+    je FOR_END_1
+    ; Pushing String Literal
+    lea rax, [str_0_1]
+    push rax
+    pop rdi
+    mov rsi, rdi
+    mov rax, 1
+    mov rdi, 1
+    mov rdx, 1
+    syscall
+    ; Pushing Variable
+    mov rax, [var_j]
+    push rax
+    ; Pushing Integer Literal
+    mov rax, 1
+    push rax
+    ; Adding
+    pop rdi
+    pop rax
+    add rax, rdi
+    push rax
+    ; Assigning variable
+    pop rax
+    mov [var_j], rax
+    jmp FOR_START_1
+FOR_END_1:
+    ; Printing newline
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, newline_str
+    mov rdx, 1
+    syscall
     ; Pushing Variable
     mov rax, [var_i]
     push rax
@@ -116,12 +172,6 @@ FOR_START_0:
     mov [var_i], rax
     jmp FOR_START_0
 FOR_END_0:
-    ; Printing number
-    ; Pushing Variable
-    mov rax, [var_o]
-    push rax
-    pop rdi
-    call dump
     ; Pushing Integer Literal
     mov rax, 0
     push rax
@@ -132,7 +182,10 @@ FOR_END_0:
     mov rdi, 0
     syscall
 segment .data
+str_0_1: db "*", 0
 var_o: dq 0
 var_i: dq 0
 var_x: dq 0
+var_j: dq 0
 
+newline_str: db 10

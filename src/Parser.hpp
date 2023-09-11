@@ -90,6 +90,11 @@ struct NodeStmtPrintStr {
     NodeExpr expr;
 };
 
+struct NodeStmtPrintLn {
+    NodeExpr expr;
+};
+
+
 struct NodeStmtLet {
     Token identifier;
     NodeExpr expr;
@@ -117,7 +122,7 @@ struct NodeStmtAssign{
 
 
 struct NodeStmt {
-    std::variant<NodeStmtExit, NodeStmtLet, NodeStmtPrint, NodeStmtIf, NodeStmtPrintStr, NodeStmtFor, NodeStmtAssign> node;
+    std::variant<NodeStmtExit, NodeStmtLet, NodeStmtPrint, NodeStmtIf, NodeStmtPrintStr, NodeStmtFor, NodeStmtAssign, NodeStmtPrintLn> node;
 };
 
 struct NodeProg {
@@ -346,6 +351,21 @@ class Parser {
                 }
                 else {
                     std::cout << "Error: Invalid syntax print()" << std::endl;
+                    exit(1);
+                }
+
+                return NodeStmt{.node = node_stmt};
+            }
+            else if (peak().value().type == Tokentype::PRINTLN){
+                consume();
+
+                NodeStmtPrintLn node_stmt;
+
+                if (peak().value().type == Tokentype::SEMI) {
+                    consume();
+                }
+                else {
+                    std::cout << "Error: Invalid syntax println missing ;" << std::endl;
                     exit(1);
                 }
 

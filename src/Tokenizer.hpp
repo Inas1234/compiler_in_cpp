@@ -30,7 +30,8 @@ enum class Tokentype{
     STRINGLIT,
     PRINTSTR,
     FOR,
-    INCLUDE
+    INCLUDE,
+    PRINTLN
 };
 
 struct Token{
@@ -102,6 +103,11 @@ class Tokenize{
                     }
                     else if (buffer == "print"){
                         tokens.push_back({Tokentype::PRINT});
+                        buffer.clear();
+                        continue;
+                    }
+                    else if (buffer == "println"){
+                        tokens.push_back({Tokentype::PRINTLN});
                         buffer.clear();
                         continue;
                     }

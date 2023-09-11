@@ -166,6 +166,15 @@ class Generator{
                     gen->pop("rdi");
                     gen->m_output << "    call dump" << std::endl;
                 }
+                void operator()(const NodeStmtPrintLn& node){
+                    gen->m_output << "    ; Printing newline" << std::endl;
+                    gen->m_output << "    mov rax, 1" << std::endl;  // syscall number for sys_write
+                    gen->m_output << "    mov rdi, 1" << std::endl;  // file descriptor: STDOUT
+                    gen->m_output << "    mov rsi, newline_str" << std::endl; // address of the newline string
+                    gen->m_output << "    mov rdx, 1" << std::endl;  // number of bytes
+                    gen->m_output << "    syscall" << std::endl;
+
+                }
                 void operator()(const NodeStmtIf& node) {
                     // Label creation for condition handling
                     static int labelCounter = 0;
@@ -399,7 +408,7 @@ class Generator{
 
             m_output << gen_data_segment();
             m_output << m_dataSection.str() << std::endl;
-
+            m_output << "newline_str: db 10" << std::endl;
             return m_output.str();
 
         }
