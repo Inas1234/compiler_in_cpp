@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <assert.h>
+#include <stack>
 
 class Generator{
     public:
@@ -29,9 +30,9 @@ class Generator{
                 void operator()(const NodeExprIdentifier& node) {
                     gen->m_output << "    ; Pushing Variable"<< std::endl;
                     const auto& var = gen->m_vars.at(node.token.value.value());
-                    std::stringstream offset;
-                    offset << "QWORD [rsp + " << (gen->stack_size - var.stack_loc - 1) * 8 << "]";
-                    gen->push(offset.str());
+                    std::string offset = var.label;
+                    gen->m_output << "    mov rax, [" << offset << "]" << std::endl;
+                    gen->push("rax");                
                 }
                 void operator()(const BinaryExprPlus& node){
                     gen->gen_expr(*node.lhs);
@@ -133,21 +134,27 @@ class Generator{
                         std::cout << "Error: Variable already declared" << std::endl;
                         exit(1);
                     }
-                    gen->m_vars.insert({node.identifier.value.value(), Var{gen->stack_size}});
+                    std::string varLabel = "var_" + node.identifier.value.value();
+                    gen->m_dataSection << varLabel << ": dq 0" << std::endl; // Assuming a default value of 0, for 64-bit variables.
+
+                    gen->m_vars.insert({node.identifier.value.value(), Var{gen->stack_size, varLabel}});
                     gen->gen_expr(node.expr);
                 }
 
-                void operator()(const NodeStmtAssign& node){
-                    gen->m_output << "    ; Assigning variable"<< std::endl;
-                    if (gen->m_vars.find(node.identifier.value.value()) == gen->m_vars.end()){
+                void operator()(const NodeStmtAssign& node) {
+                    gen->m_output << "    ; Assigning variable" << std::endl;
+                    auto it = gen->m_vars.find(node.identifier.value.value());
+
+                    if (it == gen->m_vars.end()) {
                         std::cout << "Error: Variable not declared" << std::endl;
                         exit(1);
                     }
+
+                    Var var = it->second;
+                    
                     gen->gen_expr(node.expr);
                     gen->pop("rax");
-                    std::stringstream offset;
-                    offset << "QWORD [rsp + " << (gen->stack_size - gen->m_vars.at(node.identifier.value.value()).stack_loc - 1) * 8 << "]";
-                    gen->m_output << "    mov " << offset.str() << ", rax" << std::endl;
+                    gen->m_output << "    mov [" << var.label << "], rax" << std::endl; // Storing the value in the data section
                 }
 
                 void operator() (const NodeStmtPrint& node) {
@@ -234,7 +241,7 @@ class Generator{
                         void operator()(const NodeExprIdentifier& node2) {
                             const auto& var = gen->m_vars.at(node2.token.value.value());
 
-                            std::string offset = "QWORD [rsp + " + std::to_string((gen->stack_size - var.stack_loc - 1) * 8) + "]";
+                            std::string offset = var.label;
 
                             // Load the string's address into rsi from its stack location
                             gen->m_output << "    mov rsi, " << offset << std::endl;
@@ -279,36 +286,45 @@ class Generator{
                     std::visit(ExprTypeVisitor{gen}, node.expr.node);
                 }
                 void operator()(const NodeStmtFor& node) {
-                    // Label creation for loop handling
-                    static int labelCounter = 0;
-                    int currentLabel = labelCounter++;
+                    static std::stack<std::unordered_map<std::string, Var>> varsStack;
+                    static int globalLabelCounter = 0;
+
+                    // Get a new unique label for this loop
+                    int currentLabel = globalLabelCounter++;
 
                     std::string startLabel = "FOR_START_" + std::to_string(currentLabel);
                     std::string endLabel = "FOR_END_" + std::to_string(currentLabel);
 
-                    // Generate code for the initialization statement
+                    // Push the current state of m_vars onto the stack, marking the start of a new scope
+                    varsStack.push(gen->m_vars);
+
+                    // Handle the initialization part of the for loop
                     gen->gen_expr(node.initialization);
 
                     gen->m_output << startLabel << ":\n";
 
-                    // Generate code for the condition
+                    // Evaluate the condition and check if we should exit the loop
                     gen->gen_expr(node.condition);
                     gen->pop("rax");
-                    gen->m_output << "    cmp rax, 0" << std::endl;  // Assuming 0 is false
+                    gen->m_output << "    cmp rax, 0" << std::endl;  
                     gen->m_output << "    je " << endLabel << std::endl;
 
-                    // Generate code for the body
+                    // Generate code for the statements inside the for loop
                     for (const auto& stmt : node.nodes) {
                         gen->gen_stmt(*stmt);
                     }
 
-                    // Generate code for the post-iteration expression
+                    // Handle the iteration part of the for loop
                     gen->gen_stmt(*node.iteration);
 
-                    // Loop back to the start
+                    // Jump back to the start to check the condition again
                     gen->m_output << "    jmp " << startLabel << std::endl;
 
                     gen->m_output << endLabel << ":\n";
+
+                    // Pop the top of the vars stack, returning to the previous scope
+                    gen->m_vars = varsStack.top();
+                    varsStack.pop();
                 }
 
             };
@@ -378,7 +394,8 @@ class Generator{
             m_output << "    mov rdi, 0\n";
             m_output << "    syscall\n";
 
-            m_output << gen_data_segment();  
+            m_output << gen_data_segment();
+            m_output << m_dataSection.str() << std::endl;
 
             return m_output.str();
 
@@ -470,11 +487,14 @@ class Generator{
 
         struct Var {
             size_t stack_loc;
+            std::string label;
         };
 
         size_t stack_size = 0;
         NodeProg m_node;
         std::stringstream m_output;
+        std::stringstream m_dataSection;
 
         std::unordered_map<std::string, Var> m_vars {}; 
+        std::stack<std::unordered_map<std::string, std::string>> varScopeStack;
 };
