@@ -140,13 +140,32 @@ struct NodeStmtAssign{
     NodeExpr expr;
 };
 
+struct NodeStmtFunction {
+    Token functionName;
+    std::vector<Token> parameters;
+    std::vector<std::shared_ptr<NodeStmt>> body;
+};
+
+
+struct NodeFunctions
+{
+    NodeStmtFunction function;
+};
+
+
+struct NodeStmtFunctionCall {
+    Token functionName;
+    std::vector<NodeExpr> arguments;
+};
+
 
 struct NodeStmt {
-    std::variant<NodeStmtExit, NodeStmtLet, NodeStmtPrint, NodeStmtIf, NodeStmtPrintStr, NodeStmtFor, NodeStmtAssign, NodeStmtPrintLn> node;
+    std::variant<NodeStmtExit, NodeStmtLet, NodeStmtPrint, NodeStmtIf, NodeStmtPrintStr, NodeStmtFor, NodeStmtAssign, NodeStmtPrintLn, NodeStmtFunctionCall> node;
 };
 
 struct NodeProg {
-    std::vector<NodeStmt> nodes;    
+    std::vector<NodeStmt> main;
+    std::vector<NodeStmtFunction> functions;
 };
 
 class Parser {
@@ -524,12 +543,126 @@ class Parser {
 
                 return NodeStmt{.node = stmt_assign};
             }
+            else if (peak().value().type == Tokentype::IDENTIFIER && peak(1).value().type == Tokentype::OPENPAREN) {
+                NodeStmtFunctionCall node_stmt;
+                node_stmt.functionName = consume();  // Store the function name
+                consume();  // Consume the open parenthesis
+
+                // Parse the function arguments
+                while (peak().value().type != Tokentype::CLOSEPAREN) {
+                    if (auto arg = parse_expr()) {
+                        node_stmt.arguments.push_back(arg.value());
+                    } else {
+                        std::cout << "Error: Invalid syntax in function call argument" << std::endl;
+                        exit(1);
+                    }
+
+                    // If there's a comma, we expect another argument
+                    if (peak().value().type == Tokentype::COMMA) {
+                        consume();  // Consume the comma
+                    } else if (peak().value().type != Tokentype::CLOSEPAREN) {
+                        std::cout << "Error: Expected , or ) in function call" << std::endl;
+                        exit(1);
+                    }
+                }
+
+                consume();  // Consume the close parenthesis
+
+                if (peak().value().type != Tokentype::SEMI) {
+                    std::cout << "Error: Expected ; after function call" << std::endl;
+                    exit(1);
+                }
+                consume();  // Consume the semicolon
+
+                return NodeStmt{.node = node_stmt};
+            }
 
             else {
                 return {};
             }
 
         }
+
+        [[nodiscard]] std::optional<NodeFunctions> parse_func_def() {
+            if (peak().value().type == Tokentype::FUNCTION && peak(1).value().type == Tokentype::IDENTIFIER && peak(2).value().type == Tokentype::OPENPAREN) {
+                NodeStmtFunction func_def;
+
+                // Consume "fn" keyword
+                consume();
+
+                // Get function name
+                func_def.functionName = consume();
+
+                // Consume open parenthesis
+                consume();
+
+                // Handle arguments
+                while (peak().has_value() && peak().value().type != Tokentype::CLOSEPAREN) {
+                    if (peak().value().type == Tokentype::LET) {
+                        // Consume 'let' keyword
+                        consume();
+
+                        if (peak().value().type == Tokentype::IDENTIFIER) {
+                            // Append argument to function definition
+                            func_def.parameters.push_back(consume());
+
+                            if (peak().value().type == Tokentype::COMMA) {
+                                consume(); // Consume comma
+                            } else if (peak().value().type != Tokentype::CLOSEPAREN) {
+                                std::cout << "Error: Expected ',' or ')' in function arguments list." << std::endl;
+                                exit(1);
+                            }
+                        } else {
+                            std::cout << "Error: Expected argument identifier after 'let' in function definition." << std::endl;
+                            exit(1);
+                        }
+                    } else {
+                        std::cout << "Error: Expected 'let' keyword in function parameter." << std::endl;
+                        exit(1);
+                    }
+                }
+
+                if (peak().value().type != Tokentype::CLOSEPAREN) {
+                    std::cout << "Error: Expected ')' in function definition." << std::endl;
+                    exit(1);
+                }
+
+                // Consume close parenthesis
+                consume();
+
+                // Handle the body of the function
+                if (peak().value().type != Tokentype::BRACKET_OPEN) {
+                    std::cout << "Error: Expected '{' at start of function body." << std::endl;
+                    exit(1);
+                }
+
+                // Consume open bracket
+                consume();
+
+                // Parse statements inside function body
+                while (peak().has_value() && peak().value().type != Tokentype::BRACKET_CLOSE) {
+                    if (auto node = parse_stmt()) {
+                        func_def.body.push_back(std::make_shared<NodeStmt>(node.value()));
+                    } else {
+                        std::cout << "Error: Invalid statement in function body." << std::endl;
+                        exit(1);
+                    }
+                }
+
+                if (peak().value().type != Tokentype::BRACKET_CLOSE) {
+                    std::cout << "Error: Expected '}' at end of function body." << std::endl;
+                    exit(1);
+                }
+
+                // Consume close bracket
+                consume();
+
+                return NodeFunctions{.function = func_def};
+            }
+            return {};
+        }
+
+
 
         [[nodiscard]] std::optional<NodeProg> parse_prog(){
             NodeProg node_prog;
@@ -538,8 +671,11 @@ class Parser {
                 if (peak().value().type == Tokentype::INCLUDE){
                     handleInclude();
                 }
+                else if (auto node = parse_func_def()) {
+                    node_prog.functions.push_back(node.value().function);
+                }
                 else if (auto node = parse_stmt()) {
-                    node_prog.nodes.push_back(node.value());
+                    node_prog.main.push_back(node.value());
                 }
                 else {
                     std::cout << "Error: Invalid syntax" << std::endl;
@@ -565,7 +701,6 @@ class Parser {
                 std::cout << "Error: Invalid syntax expected file path" << std::endl;
                 exit(1);
             }
-            std::cout << "Including file: " << filename.value() << std::endl;
             std::string output;
             {
                 std::ifstream input("./src/include/" + filename.value());
@@ -577,7 +712,6 @@ class Parser {
                 buffer << input.rdbuf();
                 output = buffer.str();
             }
-            std::cout << "OUTPUT: " << output << std::endl;
             Tokenize tokenizer(output);
             std::vector<Token> tokens = tokenizer.tokenize();
             m_tokens.insert(m_tokens.begin() + m_index, tokens.begin(), tokens.end());

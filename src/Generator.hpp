@@ -292,7 +292,7 @@ class Generator{
                             std::string offset = var.label;
 
                             // Load the string's address into rsi from its stack location
-                            gen->m_output << "    mov rsi, " << offset << std::endl;
+                            gen->m_output << "    mov rsi, [" << offset <<"]" << std::endl;
 
                             // Compute the string length at runtime
                             gen->m_output << "    ; Start compute length of string\n";
@@ -379,10 +379,80 @@ class Generator{
                     varsStack.pop();
                 }
 
+                void operator()(const NodeStmtFunctionCall& node){
+                    std::vector<std::string> regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
+                    // Push arguments onto the stack or move to registers
+                    for (int i = node.arguments.size() - 1; i >= 0; i--) {
+                        if (i >= 6) {
+                            // If more than 6 arguments, push onto the stack
+                            // For simplicity, assume every argument generates a value in rax (modify as per your design)
+                            gen->gen_expr(node.arguments[i]);
+                            gen->m_output << "    push rax" << std::endl;
+                        }
+                    }
+
+                    for (size_t i = 0; i < std::min(node.arguments.size(), size_t(6)); i++) {
+                        // For the first 6 arguments, move to the appropriate registers
+                         gen->gen_expr(node.arguments[i]);
+                         gen->m_output << "    mov " << regs[i] << ", rax" << std::endl; // Assuming rax holds the result
+                    }
+
+                    // Call function
+                     gen->m_output << "    call " << node.functionName.value.value() << std::endl;
+
+                    // Cleanup if arguments were pushed onto the stack
+                    if (node.arguments.size() > 6) {
+                        int stack_adjust = 8 * (node.arguments.size() - 6);
+                         gen->m_output << "    add rsp, " << stack_adjust << std::endl;
+                    }                
+                }
+
             };
             StmtVisitor visitor {.gen = this};
             std::visit(visitor, stmt.node);
         }
+
+
+        void gen_function(const NodeStmtFunction& node) {
+            m_output << "    ; Function declaration for " << node.functionName.value.value() << std::endl;
+            m_output << "    global " << node.functionName.value.value() << std::endl;
+            m_output << node.functionName.value.value() << ":" << std::endl;
+
+            // Function prologue
+            m_output << "    push rbp" << std::endl;
+            m_output << "    mov rbp, rsp" << std::endl;
+
+            // Allocate space and save arguments
+            std::vector<std::string> regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+            int stack_offset = 0; // Used if you have more than 6 parameters
+
+            for (size_t i = 0; i < node.parameters.size(); i++) {
+                std::string paramName = node.parameters[i].value.value(); // extract the name of the parameter
+                if (i < 6) {
+                    m_output << "    push " << regs[i] << std::endl;
+                    m_vars.emplace(paramName, Var{this->stack_size, "rbp - " + std::to_string((i+1) * 8)});
+                } else {
+                    stack_offset += 8;
+                    m_output << "    mov rax, [rbp + " << stack_offset << "]" << std::endl; // Move next argument from stack to rax
+                    m_output << "    push rax" << std::endl;
+                    m_vars.emplace(paramName, Var{this->stack_size, "rbp - " + std::to_string(8 * (i + 7))});
+                }
+            }
+
+            // Generate the code for the body of the function
+            for (const auto& stmt : node.body) {
+                gen_stmt(*stmt);
+            }
+
+            // Function epilogue
+            m_output << "    mov rsp, rbp" << std::endl;
+            m_output << "    pop rbp" << std::endl;
+            m_output << "    ret" << std::endl;
+        }
+
+
+
 
         [[nodiscard]] std::string gen_prog(){
             m_output << "segment .text\n";
@@ -434,17 +504,23 @@ class Generator{
             m_output << "    nop\n";
             m_output << "    leave\n";
             m_output << "    ret\n";
-
+            m_output << std::endl;
 
 
             m_output << "global _start\n_start:\n";
-            for (auto stmt : m_node.nodes){
+            for (auto stmt : m_node.main){
                 gen_stmt(stmt);
             }
 
             m_output << "    mov rax, 60\n";
             m_output << "    mov rdi, 0\n";
             m_output << "    syscall\n";
+
+
+            for (const auto& pair : m_node.functions) {
+                gen_function(pair);
+            }
+
 
             m_output << gen_data_segment();
             m_output << m_dataSection.str() << std::endl;

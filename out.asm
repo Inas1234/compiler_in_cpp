@@ -47,160 +47,24 @@ dump:
     nop
     leave
     ret
+
 global _start
 _start:
     ; Declearing variable
-    ; Pushing Integer Literal
-    mov rax, 20
-    push rax
-    pop rax
-    mov [var_o], rax
-    ; Declearing variable
-    ; Pushing Integer Literal
-    mov rax, 0
-    push rax
-    pop rax
-    mov [var_i], rax
-    ; Declearing variable
-    ; Pushing Integer Literal
-    mov rax, 2
-    push rax
-    ; Pushing Integer Literal
-    mov rax, 1
-    push rax
-    ; Adding
-    pop rdi
-    pop rax
-    add rax, rdi
-    push rax
-    pop rax
-    mov [var_x], rax
-    ; Declearing variable
-    ; Pushing Integer Literal
-    mov rax, 0
-    push rax
-    pop rax
-    mov [var_j], rax
-    ; Pushing Variable
-    mov rax, [var_i]
-    push rax
-FOR_START_0:
-    ; Pushing Variable
-    mov rax, [var_i]
-    push rax
-    ; Pushing Integer Literal
-    mov rax, 5
-    push rax
-    ; Checkign if lesser
-    pop rdi
-    pop rax
-    cmp rax, rdi
-    setl al
-    push rax
-    pop rax
-    cmp rax, 0
-    je FOR_END_0
-    ; Pushing Integer Literal
-    mov rax, 0
-    push rax
-    ; Assigning variable
-    pop rax
-    mov [var_j], rax
-    ; Pushing Variable
-    mov rax, [var_j]
-    push rax
-FOR_START_1:
-    ; Pushing Variable
-    mov rax, [var_j]
-    push rax
-    ; Pushing Integer Literal
-    mov rax, 5
-    push rax
-    ; Checkign if lesser
-    pop rdi
-    pop rax
-    cmp rax, rdi
-    setl al
-    push rax
-    pop rax
-    cmp rax, 0
-    je FOR_END_1
-    ; Pushing Variable
-    mov rax, [var_i]
-    push rax
-    ; Pushing Variable
-    mov rax, [var_j]
-    push rax
-    ; Checkign if equal
-    pop rdi
-    pop rax
-    cmp rax, rdi
-    sete al
-    push rax
-    pop rax
-    cmp rax, 1
-    je IF_TRUE_0
-    jmp IF_FALSE_0
-IF_TRUE_0:
     ; Pushing String Literal
-    lea rax, [str_0_1]
+    lea rax, [str_0_4]
     push rax
-    pop rdi
-    mov rsi, rdi
-    mov rax, 1
-    mov rdi, 1
-    mov rdx, 1
-    syscall
-    jmp IF_END_0
-IF_FALSE_0:
+    pop rax
+    mov [var_s], rax
     ; Pushing String Literal
-    lea rax, [str_1_1]
+    lea rax, [str_1_4]
     push rax
-    pop rdi
-    mov rsi, rdi
-    mov rax, 1
-    mov rdi, 1
-    mov rdx, 1
-    syscall
-IF_END_0:
-    ; Pushing Variable
-    mov rax, [var_j]
-    push rax
+    mov rdi, rax
     ; Pushing Integer Literal
-    mov rax, 1
+    mov rax, 0
     push rax
-    ; Adding
-    pop rdi
-    pop rax
-    add rax, rdi
-    push rax
-    ; Assigning variable
-    pop rax
-    mov [var_j], rax
-    jmp FOR_START_1
-FOR_END_1:
-    ; Printing newline
-    mov rax, 1
-    mov rdi, 1
-    mov rsi, newline_str
-    mov rdx, 1
-    syscall
-    ; Pushing Variable
-    mov rax, [var_i]
-    push rax
-    ; Pushing Integer Literal
-    mov rax, 1
-    push rax
-    ; Adding
-    pop rdi
-    pop rax
-    add rax, rdi
-    push rax
-    ; Assigning variable
-    pop rax
-    mov [var_i], rax
-    jmp FOR_START_0
-FOR_END_0:
+    mov rsi, rax
+    call printi
     ; Pushing Integer Literal
     mov rax, 0
     push rax
@@ -210,12 +74,78 @@ FOR_END_0:
     mov rax, 60
     mov rdi, 0
     syscall
+    ; Function declaration for printf
+    global printf
+printf:
+    push rbp
+    mov rbp, rsp
+    push rdi
+    ; Pushing Variable
+    mov rax, [rbp - 8]
+    push rax
+    pop rdi
+    mov rsi, [rbp - 8]
+    ; Start compute length of string
+    xor rcx, rcx
+.length_loop:
+    mov al, BYTE [rsi + rcx]
+    test al, al
+    je .length_done
+    inc rcx
+    jmp .length_loop
+.length_done:
+    ; End compute length of string
+    mov rdx, rcx
+    mov rax, 1
+    mov rdi, 1
+    syscall
+    ; Printing newline
+    mov rax, 1
+    mov rdi, 1
+    mov rsi, newline_str
+    mov rdx, 1
+    syscall
+    mov rsp, rbp
+    pop rbp
+    ret
+    ; Function declaration for printi
+    global printi
+printi:
+    push rbp
+    mov rbp, rsp
+    push rdi
+    push rsi
+    ; Pushing Variable
+    mov rax, [rbp - 8]
+    push rax
+    pop rdi
+    mov rsi, [rbp - 8]
+    ; Start compute length of string
+    xor rcx, rcx
+.length_loop:
+    mov al, BYTE [rsi + rcx]
+    test al, al
+    je .length_done
+    inc rcx
+    jmp .length_loop
+.length_done:
+    ; End compute length of string
+    mov rdx, rcx
+    mov rax, 1
+    mov rdi, 1
+    syscall
+    ; Printing number
+    ; Pushing Variable
+    mov rax, [rbp - 16]
+    push rax
+    pop rdi
+    call dump
+    mov rsp, rbp
+    pop rbp
+    ret
 segment .data
-str_1_1: db " ", 0
-str_0_1: db "*", 0
-var_o: dq 0
-var_i: dq 0
-var_x: dq 0
-var_j: dq 0
+str_0_4: db "i = ", 0
+str_1_4: db "i = ", 0
+var_s: dq 0
 
 newline_str: db 10

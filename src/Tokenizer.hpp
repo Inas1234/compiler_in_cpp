@@ -33,7 +33,9 @@ enum class Tokentype{
     PRINTSTR,
     FOR,
     INCLUDE,
-    PRINTLN
+    PRINTLN,
+    FUNCTION,
+    COMMA
 };
 
 struct Token{
@@ -127,6 +129,11 @@ class Tokenize{
                     }
                     else if (buffer == "include"){
                         tokens.push_back({Tokentype::INCLUDE});
+                        buffer.clear();
+                        continue;
+                    }
+                    else if (buffer == "fn"){
+                        tokens.push_back({Tokentype::FUNCTION});
                         buffer.clear();
                         continue;
                     }
@@ -238,6 +245,11 @@ class Tokenize{
                 else if (peak().value() == '}'){
                     consume();
                     tokens.push_back({Tokentype::BRACKET_CLOSE});
+                    continue;
+                }
+                else if (peak().value() == ','){
+                    consume();
+                    tokens.push_back({Tokentype::COMMA});
                     continue;
                 }
                 else if (isspace(peak().value())){
