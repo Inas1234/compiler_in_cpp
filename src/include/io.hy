@@ -3,7 +3,7 @@ fn printf(let str){
     println;
 }
 
-fn printi(let str, let i){
+fn printi(let str, let int){
     prints(str);
-    print(i);
+    print(int);
 }

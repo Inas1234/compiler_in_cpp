@@ -29,6 +29,11 @@ class Generator{
                 }
                 void operator()(const NodeExprIdentifier& node) {
                     gen->m_output << "    ; Pushing Variable"<< std::endl;
+                    if (gen->m_vars.find(node.token.value.value()) == gen->m_vars.end()){
+                        std::string varLabel = "var_" + node.token.value.value();
+                        std::cout << "Error: Variable not declared " << varLabel << std::endl;
+                        exit(1);
+                    }
                     const auto& var = gen->m_vars.at(node.token.value.value());
                     std::string offset = var.label;
                     gen->m_output << "    mov rax, [" << offset << "]" << std::endl;
@@ -133,6 +138,46 @@ class Generator{
                     gen->m_output << "    setle al" << std::endl;
                     gen->push("rax");
                 }
+                void operator()(const NodeExprFunctionCall& node) {
+                    std::vector<std::string> regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
+                    // Push arguments onto the stack or move to registers
+                    int numArgs = node.arguments.size();
+
+                    if (numArgs > 6) {
+                        for (int i = numArgs - 1; i >= 6; --i) {
+                            gen->gen_expr(*node.arguments[i]);
+                            gen->m_output << "    push rax" << std::endl;
+                        }
+                    }
+
+                    for (int i = 0; i < std::min(numArgs, 6); ++i) {
+                        gen->gen_expr(*node.arguments[i]);
+                        gen->m_output << "    mov " << regs[i] << ", rax" << std::endl;
+                    }
+
+                    // Ensure the stack is 16-byte aligned before the call. If the number of arguments pushed onto 
+                    // the stack is odd, push an extra value to align the stack.
+                    if ((numArgs - 6) % 2 == 1) {
+                        gen->m_output << "    sub rsp, 8 ; Aligning stack to 16 bytes" << std::endl;
+                    }
+
+                    // Call function
+                    gen->m_output << "    call " << node.functionName.value.value() << std::endl;
+
+                    // Cleanup if arguments were pushed onto the stack. 
+                    // Also consider the potential extra value pushed for stack alignment.
+                    if (numArgs > 6) {
+                        int stack_adjust = 8 * (numArgs - 6);
+                        if ((numArgs - 6) % 2 == 1) {
+                            stack_adjust += 8;
+                        }
+                        gen->m_output << "    add rsp, " << stack_adjust << std::endl;
+                    }
+
+                    // Push the result of the function call onto the stack
+                    gen->push("rax");
+                }
             };
             std::visit(ExprVisitor{this}, expr.node);
         }
@@ -151,7 +196,7 @@ class Generator{
                 void operator() (const NodeStmtLet& node){
                     gen->m_output << "    ; Declearing variable"<< std::endl;
                     if (gen->m_vars.find(node.identifier.value.value()) != gen->m_vars.end()){
-                        std::cout << "Error: Variable already declared" << std::endl;
+                        std::cout << "Error: Variable already declared " << std::endl;
                         exit(1);
                     }
                     std::string varLabel = "var_" + node.identifier.value.value();
@@ -249,6 +294,9 @@ class Generator{
                         void operator()(const NodeExprIfLesserEqual&) {
                             gen->m_output << "    je " << trueLabel << std::endl;
                         }
+                        void operator()(const NodeExprFunctionCall&) {
+                            gen->m_output << "    je " << trueLabel << std::endl;
+                        }
                     };
 
                     std::visit(JumpVisitor{gen, trueLabel}, node.condition.node);
@@ -334,6 +382,8 @@ class Generator{
                         }
                         void operator()(const NodeExprIfLesserEqual&) {
                         }
+                        void operator()(const NodeExprFunctionCall& node) {
+                        }
                     };
                     std::visit(ExprTypeVisitor{gen}, node.expr.node);
                 }
@@ -355,10 +405,9 @@ class Generator{
 
                     gen->m_output << startLabel << ":\n";
 
-                    // Evaluate the condition and check if we should exit the loop
                     gen->gen_expr(node.condition);
                     gen->pop("rax");
-                    gen->m_output << "    cmp rax, 0" << std::endl;  
+                    gen->m_output << "    test al, al" << std::endl;                    
                     gen->m_output << "    je " << endLabel << std::endl;
 
                     // Generate code for the statements inside the for loop
@@ -414,41 +463,82 @@ class Generator{
         }
 
 
-        void gen_function(const NodeStmtFunction& node) {
-            m_output << "    ; Function declaration for " << node.functionName.value.value() << std::endl;
-            m_output << "    global " << node.functionName.value.value() << std::endl;
-            m_output << node.functionName.value.value() << ":" << std::endl;
+        void gen_function(const NodeFunctions& node) {
+            struct FunctionVisitor {
+                Generator *gen;
+                void operator()(const NodeStmtFunction& node){
+                    gen->m_output << "    ; Function declaration for " << node.functionName.value.value() << std::endl;
+                    gen->m_output << "    global " << node.functionName.value.value() << std::endl;
+                    gen->m_output << node.functionName.value.value() << ":" << std::endl;
 
-            // Function prologue
-            m_output << "    push rbp" << std::endl;
-            m_output << "    mov rbp, rsp" << std::endl;
+                    // Function prologue
+                    gen->m_output << "    push rbp" << std::endl;
+                    gen->m_output << "    mov rbp, rsp" << std::endl;
 
-            // Allocate space and save arguments
-            std::vector<std::string> regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
-            int stack_offset = 0; // Used if you have more than 6 parameters
+                    // Allocate space and save arguments
+                    std::vector<std::string> regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+                    int stack_offset = 0; // Used if you have more than 6 parameters
 
-            for (size_t i = 0; i < node.parameters.size(); i++) {
-                std::string paramName = node.parameters[i].value.value(); // extract the name of the parameter
-                if (i < 6) {
-                    m_output << "    push " << regs[i] << std::endl;
-                    m_vars.emplace(paramName, Var{this->stack_size, "rbp - " + std::to_string((i+1) * 8)});
-                } else {
-                    stack_offset += 8;
-                    m_output << "    mov rax, [rbp + " << stack_offset << "]" << std::endl; // Move next argument from stack to rax
-                    m_output << "    push rax" << std::endl;
-                    m_vars.emplace(paramName, Var{this->stack_size, "rbp - " + std::to_string(8 * (i + 7))});
+                    for (size_t i = 0; i < node.parameters.size(); i++) {
+                        std::string paramName = node.parameters[i].value.value(); // extract the name of the parameter
+                        if (i < 6) {
+                            gen->m_output << "    push " << regs[i] << std::endl;
+                            gen->m_vars.emplace(paramName, Var{gen->stack_size, "rbp - " + std::to_string((i+1) * 8)});
+                        } else {
+                            stack_offset += 8;
+                            gen->m_output << "    mov rax, [rbp + " << stack_offset << "]" << std::endl; // Move next argument from stack to rax
+                            gen->m_output << "    push rax" << std::endl;
+                            gen->m_vars.emplace(paramName, Var{gen->stack_size, "rbp - " + std::to_string(8 * (i + 7))});
+                        }
+                    }
+
+                    // Generate the code for the body of the function
+                    for (const auto& stmt : node.body) {
+                        gen->gen_stmt(*stmt);
+                    }
+
+                    // Function epilogue
+                    gen->m_output << "    mov rsp, rbp" << std::endl;
+                    gen->m_output << "    pop rbp" << std::endl;
+                    gen->m_output << "    ret" << std::endl;
                 }
-            }
+                void operator()(const NodeStmtFunctionReturn& node) {
+                    gen->m_output << "    ; Function declaration with return for " << node.functionName.value.value() << std::endl;
+                    gen->m_output << "    global " << node.functionName.value.value() << std::endl;
+                    gen->m_output << node.functionName.value.value() << ":" << std::endl;
 
-            // Generate the code for the body of the function
-            for (const auto& stmt : node.body) {
-                gen_stmt(*stmt);
-            }
+                    // Function prologue
+                    gen->m_output << "    push rbp" << std::endl;
+                    gen->m_output << "    mov rbp, rsp" << std::endl;
 
-            // Function epilogue
-            m_output << "    mov rsp, rbp" << std::endl;
-            m_output << "    pop rbp" << std::endl;
-            m_output << "    ret" << std::endl;
+                    // Saving arguments
+                    std::vector<std::string> regs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+                    
+                    for (size_t i = 0; i < std::min(node.parameters.size(), size_t(6)); i++) {
+                        std::string paramName = node.parameters[i].value.value();
+                        gen->m_output << "    push " << regs[i] << std::endl;
+                        gen->m_vars.emplace(paramName, Var{gen->stack_size, "rbp - " + std::to_string((i+1) * 8)});
+                    }
+
+                    // Process function body
+                    for (const auto& stmt : node.body) {
+                        gen->gen_stmt(*stmt);
+                    }
+
+                    // Handle return expression
+                    if(node.returnExpr.has_value()) {
+                        gen->gen_expr(node.returnExpr.value());
+                    }
+
+                    // Function epilogue
+                    gen->m_output << "    leave" << std::endl;  // Recommended over the combination of `mov rsp, rbp` and `pop rbp`
+                    gen->m_output << "    ret" << std::endl;
+                }
+
+            };
+
+            std::visit(FunctionVisitor{this}, node.function);
+
         }
 
 
@@ -610,6 +700,8 @@ class Generator{
                 void operator()(const NodeExprIfGreaterEqual&) {
                 }
                 void operator()(const NodeExprIfLesserEqual&) {
+                }
+                void operator()(const NodeExprFunctionCall& node) {
                 }
             };
             ExprVisitor visitor;

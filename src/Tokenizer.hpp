@@ -35,7 +35,9 @@ enum class Tokentype{
     INCLUDE,
     PRINTLN,
     FUNCTION,
-    COMMA
+    COMMA,
+    ARROW,
+    RETURN
 };
 
 struct Token{
@@ -137,6 +139,11 @@ class Tokenize{
                         buffer.clear();
                         continue;
                     }
+                    else if (buffer == "return"){
+                        tokens.push_back({Tokentype::RETURN});
+                        buffer.clear();
+                        continue;
+                    }
                     else{
                         tokens.push_back({Tokentype::IDENTIFIER, buffer});
                         buffer.clear();
@@ -161,6 +168,12 @@ class Tokenize{
                     consume();
                     tokens.push_back({Tokentype::STRINGLIT, buffer});
                     buffer.clear();
+                    continue;
+                }
+                else if (peak().value() == '-' && peak(1).value() == '>'){
+                    consume();
+                    consume();
+                    tokens.push_back({Tokentype::ARROW});
                     continue;
                 }
                 else if (peak().value() == '?' && peak(1).value() == '='){

@@ -51,20 +51,20 @@ dump:
 global _start
 _start:
     ; Declearing variable
-    ; Pushing String Literal
-    lea rax, [str_0_4]
-    push rax
-    pop rax
-    mov [var_s], rax
-    ; Pushing String Literal
-    lea rax, [str_1_4]
+    ; Pushing Integer Literal
+    mov rax, 2
     push rax
     mov rdi, rax
-    ; Pushing Integer Literal
-    mov rax, 0
+    call sqrt
     push rax
-    mov rsi, rax
-    call printi
+    pop rax
+    mov [var_h], rax
+    ; Printing number
+    ; Pushing Variable
+    mov rax, [var_h]
+    push rax
+    pop rdi
+    call dump
     ; Pushing Integer Literal
     mov rax, 0
     push rax
@@ -143,9 +143,209 @@ printi:
     mov rsp, rbp
     pop rbp
     ret
+    ; Function declaration with return for pow
+    global pow
+pow:
+    push rbp
+    mov rbp, rsp
+    push rdi
+    push rsi
+    ; Declearing variable
+    ; Pushing Integer Literal
+    mov rax, 1
+    push rax
+    pop rax
+    mov [var_resultpow], rax
+    ; Declearing variable
+    ; Pushing Integer Literal
+    mov rax, 0
+    push rax
+    pop rax
+    mov [var_i], rax
+    ; Pushing Variable
+    mov rax, [var_i]
+    push rax
+FOR_START_0:
+    ; Pushing Variable
+    mov rax, [var_i]
+    push rax
+    ; Pushing Variable
+    mov rax, [rbp - 16]
+    push rax
+    ; Checkign if lesser
+    pop rdi
+    pop rax
+    cmp rax, rdi
+    setl al
+    push rax
+    pop rax
+    test al, al
+    je FOR_END_0
+    ; Pushing Variable
+    mov rax, [var_resultpow]
+    push rax
+    ; Pushing Variable
+    mov rax, [rbp - 8]
+    push rax
+    ; Multiplying
+    pop rdi
+    pop rax
+    imul rax, rdi
+    push rax
+    ; Assigning variable
+    pop rax
+    mov [var_resultpow], rax
+    ; Pushing Variable
+    mov rax, [var_i]
+    push rax
+    ; Pushing Integer Literal
+    mov rax, 1
+    push rax
+    ; Adding
+    pop rdi
+    pop rax
+    add rax, rdi
+    push rax
+    ; Assigning variable
+    pop rax
+    mov [var_i], rax
+    jmp FOR_START_0
+FOR_END_0:
+    ; Pushing Variable
+    mov rax, [var_resultpow]
+    push rax
+    leave
+    ret
+    ; Function declaration with return for sqrt
+    global sqrt
+sqrt:
+    push rbp
+    mov rbp, rsp
+    push rdi
+    ; Pushing Variable
+    mov rax, [rbp - 8]
+    push rax
+    ; Pushing Integer Literal
+    mov rax, 0
+    push rax
+    ; Checkign if lesser
+    pop rdi
+    pop rax
+    cmp rax, rdi
+    setl al
+    push rax
+    pop rax
+    cmp rax, 1
+    je IF_TRUE_0
+    jmp IF_FALSE_0
+IF_TRUE_0:
+    ; Pushing String Literal
+    lea rax, [str_0_22]
+    push rax
+    mov rdi, rax
+    call printf
+    jmp IF_END_0
+IF_FALSE_0:
+IF_END_0:
+    ; Declearing variable
+    ; Pushing Variable
+    mov rax, [rbp - 8]
+    push rax
+    pop rax
+    mov [var_guess], rax
+    ; Declearing variable
+    ; Pushing Integer Literal
+    mov rax, 0
+    push rax
+    pop rax
+    mov [var_j], rax
+    ; Pushing Variable
+    mov rax, [var_j]
+    push rax
+FOR_START_1:
+    ; Pushing Variable
+    mov rax, [var_j]
+    push rax
+    ; Pushing Integer Literal
+    mov rax, 10
+    push rax
+    ; Checkign if lesser
+    pop rdi
+    pop rax
+    cmp rax, rdi
+    setl al
+    push rax
+    pop rax
+    test al, al
+    je FOR_END_1
+    ; Pushing Variable
+    mov rax, [var_guess]
+    push rax
+    ; Pushing Integer Literal
+    mov rax, 2
+    push rax
+    ; Dividing
+    pop rdi
+    pop rax
+    cqo
+    idiv rdi
+    push rax
+    ; Pushing Variable
+    mov rax, [rbp - 8]
+    push rax
+    ; Pushing Variable
+    mov rax, [var_guess]
+    push rax
+    ; Dividing
+    pop rdi
+    pop rax
+    cqo
+    idiv rdi
+    push rax
+    ; Pushing Integer Literal
+    mov rax, 2
+    push rax
+    ; Dividing
+    pop rdi
+    pop rax
+    cqo
+    idiv rdi
+    push rax
+    ; Adding
+    pop rdi
+    pop rax
+    add rax, rdi
+    push rax
+    ; Assigning variable
+    pop rax
+    mov [var_guess], rax
+    ; Pushing Variable
+    mov rax, [var_j]
+    push rax
+    ; Pushing Integer Literal
+    mov rax, 1
+    push rax
+    ; Adding
+    pop rdi
+    pop rax
+    add rax, rdi
+    push rax
+    ; Assigning variable
+    pop rax
+    mov [var_j], rax
+    jmp FOR_START_1
+FOR_END_1:
+    ; Pushing Variable
+    mov rax, [var_guess]
+    push rax
+    leave
+    ret
 segment .data
-str_0_4: db "i = ", 0
-str_1_4: db "i = ", 0
-var_s: dq 0
+str_0_22: db "Error: negative number", 0
+var_h: dq 0
+var_resultpow: dq 0
+var_i: dq 0
+var_guess: dq 0
+var_j: dq 0
 
 newline_str: db 10

@@ -1,8 +1,7 @@
 include "io.hy"
+include "math.hy"
 
-let s = "i = ";
-
-printi("i = ", 0);
-
+let h = sqrt(2);
+print(h);
 
 exit (0);

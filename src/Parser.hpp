@@ -83,12 +83,18 @@ struct NodeExprIfLesserEqual {
 };
 
 
+struct NodeExprFunctionCall {
+    Token functionName;
+    std::vector<std::shared_ptr<NodeExpr>> arguments;
+};
+
+
 struct NodeExpr {
     std::variant<NodeExprIntLit, NodeExprIdentifier, BinaryExprPlus, 
     BinaryExprMinus, BinaryExprMultiply, BinaryExprDivide, 
     NodeExprIfEqual, NodeExprIfGreater, NodeExprIfNotEqual,
     NodeExprIfLesser, NodeExprStringLit, NodeExprIfGreaterEqual,
-    NodeExprIfLesserEqual> node;
+    NodeExprIfLesserEqual, NodeExprFunctionCall> node;
 };
 
 struct NodeStmtExit
@@ -146,10 +152,17 @@ struct NodeStmtFunction {
     std::vector<std::shared_ptr<NodeStmt>> body;
 };
 
+struct NodeStmtFunctionReturn {
+    Token functionName;
+    std::vector<Token> parameters;
+    std::vector<std::shared_ptr<NodeStmt>> body;
+    std::optional<NodeExpr> returnExpr;
+};
+
 
 struct NodeFunctions
 {
-    NodeStmtFunction function;
+    std::variant<NodeStmtFunction, NodeStmtFunctionReturn> function;
 };
 
 
@@ -165,7 +178,7 @@ struct NodeStmt {
 
 struct NodeProg {
     std::vector<NodeStmt> main;
-    std::vector<NodeStmtFunction> functions;
+    std::vector<NodeFunctions> functions;
 };
 
 class Parser {
@@ -175,7 +188,11 @@ class Parser {
         }
 
         [[nodiscard]] std::optional<NodeExpr> parse_expr(){
-            return parseBinOpExpr(0);
+            if (peak().has_value() && peak().value().type == Tokentype::IDENTIFIER && peak(1).value().type == Tokentype::OPENPAREN) {
+                return parseFunctionCall();
+            } else {
+                return parseBinOpExpr(0);
+            }
         }
 
         [[nodiscard]] std::optional<NodeExpr> parseBinOpExpr(int prec){
@@ -238,6 +255,41 @@ class Parser {
             }
         }
 
+        [[nodiscard]] std::optional<NodeExpr> parseFunctionCall() {
+            if (peak().value().type != Tokentype::IDENTIFIER) {
+                return {};
+            }
+
+            NodeExprFunctionCall funcCall;
+            funcCall.functionName = consume(); // Store the function name
+
+            if (peak().value().type != Tokentype::OPENPAREN) {
+                std::cout << "Error: Expected '(' after function name." << std::endl;
+                return {};
+            }
+
+            consume(); // Consume '('
+
+            while (peak().value().type != Tokentype::CLOSEPAREN) {
+                if (auto arg = parse_expr()) {
+                    funcCall.arguments.push_back(std::make_shared<NodeExpr>(arg.value()));
+                    
+                    if (peak().value().type == Tokentype::COMMA) {
+                        consume(); // Consume ','
+                    } else if (peak().value().type != Tokentype::CLOSEPAREN) {
+                        std::cout << "Error: Expected ',' or ')' in function arguments." << std::endl;
+                        return {};
+                    }
+                } else {
+                    std::cout << "Error: Invalid argument in function call." << std::endl;
+                    return {};
+                }
+            }
+
+            consume(); // Consume ')'
+
+            return NodeExpr{.node = funcCall};
+        }
 
 
         [[nodiscard]] std::optional<NodeStmt> parse_stmt(){
@@ -585,16 +637,17 @@ class Parser {
 
         [[nodiscard]] std::optional<NodeFunctions> parse_func_def() {
             if (peak().value().type == Tokentype::FUNCTION && peak(1).value().type == Tokentype::IDENTIFIER && peak(2).value().type == Tokentype::OPENPAREN) {
-                NodeStmtFunction func_def;
-
+                
                 // Consume "fn" keyword
                 consume();
 
                 // Get function name
-                func_def.functionName = consume();
+                Token functionName = consume();
 
                 // Consume open parenthesis
                 consume();
+
+                std::vector<Token> parameters;
 
                 // Handle arguments
                 while (peak().has_value() && peak().value().type != Tokentype::CLOSEPAREN) {
@@ -603,9 +656,7 @@ class Parser {
                         consume();
 
                         if (peak().value().type == Tokentype::IDENTIFIER) {
-                            // Append argument to function definition
-                            func_def.parameters.push_back(consume());
-
+                            parameters.push_back(consume());
                             if (peak().value().type == Tokentype::COMMA) {
                                 consume(); // Consume comma
                             } else if (peak().value().type != Tokentype::CLOSEPAREN) {
@@ -622,45 +673,100 @@ class Parser {
                     }
                 }
 
-                if (peak().value().type != Tokentype::CLOSEPAREN) {
-                    std::cout << "Error: Expected ')' in function definition." << std::endl;
-                    exit(1);
-                }
-
                 // Consume close parenthesis
                 consume();
 
-                // Handle the body of the function
-                if (peak().value().type != Tokentype::BRACKET_OPEN) {
-                    std::cout << "Error: Expected '{' at start of function body." << std::endl;
-                    exit(1);
-                }
+                if (peak().value().type == Tokentype::ARROW) {
+                    // This is a function with a return 
+                    NodeStmtFunctionReturn funcDefReturn;
 
-                // Consume open bracket
-                consume();
+                    funcDefReturn.functionName = functionName;
+                    funcDefReturn.parameters = parameters;
 
-                // Parse statements inside function body
-                while (peak().has_value() && peak().value().type != Tokentype::BRACKET_CLOSE) {
-                    if (auto node = parse_stmt()) {
-                        func_def.body.push_back(std::make_shared<NodeStmt>(node.value()));
+                    // Consume '->'
+                    consume();
+
+                    if (peak().value().type == Tokentype::BRACKET_OPEN) {
+                        // Consume open bracket
+                        consume();
+
+                        while (peak().has_value() && peak().value().type != Tokentype::BRACKET_CLOSE && peak().value().type != Tokentype::RETURN) {
+                            if (auto node = parse_stmt()) {
+                                funcDefReturn.body.push_back(std::make_shared<NodeStmt>(node.value()));
+                            } else {
+                                std::cout << "Error: Invalid statement in function body." << std::endl;
+                                exit(1);
+                            }
+                        }
+
+
+                        if (peak().value().type == Tokentype::RETURN){
+                            consume();
+                            std::cout <<"Return" << std::endl;
+                            if (auto node = parse_expr()) {
+                                funcDefReturn.returnExpr = node.value();
+                            } else {
+                                std::cout << "Error: Invalid return expression in function body." << std::endl;
+                                exit(1);
+                            }
+                        } else {
+                            std::cout << "Error: Expected 'return' keyword in function body." << std::endl;
+                            exit(1);
+                        }
+
+
+                        if (peak().value().type != Tokentype::SEMI) {
+                            std::cout << "Error: Expected ';' after return statement in function body." << std::endl;
+                            exit(1);
+                        }
+                        consume();  // Consume semicolon ';'
+
+                        std::cout <<"Close bracket" << std::endl;
+                        if (peak().value().type != Tokentype::BRACKET_CLOSE) {
+                            std::cout << "Error: Expected '}' at the end of function body." << std::endl;
+                            exit(1);
+                        }
+                        consume();  // Consume closing bracket '}'
+
+                        return NodeFunctions{.function = funcDefReturn};
+
                     } else {
-                        std::cout << "Error: Invalid statement in function body." << std::endl;
+                        std::cout << "Error: Expected '{' at start of function body." << std::endl;
                         exit(1);
                     }
-                }
+                    
+                } else if (peak().value().type == Tokentype::BRACKET_OPEN) {
+                    // This is a regular function without a return 
+                    NodeStmtFunction func_def;
 
-                if (peak().value().type != Tokentype::BRACKET_CLOSE) {
-                    std::cout << "Error: Expected '}' at end of function body." << std::endl;
+                    func_def.functionName = functionName;
+                    func_def.parameters = parameters;
+
+                    // Consume open bracket
+                    consume();
+
+                    while (peak().has_value() && peak().value().type != Tokentype::BRACKET_CLOSE) {
+                        if (auto node = parse_stmt()) {
+                            func_def.body.push_back(std::make_shared<NodeStmt>(node.value()));
+                        } else {
+                            std::cout << "Error: Invalid statement in function body." << std::endl;
+                            exit(1);
+                        }
+                    }
+
+                    consume();  // Consume closing bracket '}'
+
+                    return NodeFunctions{.function = func_def};
+
+                } else {
+                    std::cout << "Error: Expected '->' or '{' after function declaration." << std::endl;
                     exit(1);
                 }
-
-                // Consume close bracket
-                consume();
-
-                return NodeFunctions{.function = func_def};
             }
+
             return {};
         }
+
 
 
 
@@ -672,7 +778,7 @@ class Parser {
                     handleInclude();
                 }
                 else if (auto node = parse_func_def()) {
-                    node_prog.functions.push_back(node.value().function);
+                    node_prog.functions.push_back(node.value());
                 }
                 else if (auto node = parse_stmt()) {
                     node_prog.main.push_back(node.value());
